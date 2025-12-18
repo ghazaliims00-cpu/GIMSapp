@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { styles } from "./styles";
 import { 
@@ -36,7 +36,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [reportSubTab, setReportSubTab] = useState<string | null>(null);
   const [finSubTab, setFinSubTab] = useState<string | null>(null);
-  const [hrSubTab, setHrSubTab] = useState<string | null>(null); // New HR Subtab state
+  const [hrSubTab, setHrSubTab] = useState<string | null>(null);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   const [userRole, setUserRole] = useState("Admin");
@@ -53,6 +53,16 @@ const App = () => {
   });
 
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
+  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS_DATA);
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES_DATA);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
+  const [issuances, setIssuances] = useState<InventoryIssuance[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [studentAttendance, setStudentAttendance] = useState<StudentAttendance[]>([]);
+  const [employeeAttendance, setEmployeeAttendance] = useState<EmployeeAttendance[]>([]);
 
   // Access Control
   const [permissions, setPermissions] = useState<any>({
@@ -62,18 +72,47 @@ const App = () => {
      "Cashier": { dashboard: false, cashbook: false, reports: false, vouchers: false, fees: true, bulk: false, ledger: false, students: false, promotion: false, accounts: false, approvals: false, master: false, access: false, import: false, history: false, financial: false, hr: false, budget: false, inventory: false, scanner: false, settings: true }
   });
 
-  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS_DATA);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES_DATA);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
-  const [issuances, setIssuances] = useState<InventoryIssuance[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  
-  // Attendance State
-  const [studentAttendance, setStudentAttendance] = useState<StudentAttendance[]>([]);
-  const [employeeAttendance, setEmployeeAttendance] = useState<EmployeeAttendance[]>([]);
+  // --- PERSISTENCE LOGIC ---
+  useEffect(() => {
+    // Load data from LocalStorage on mount
+    const load = (key: string, setter: Function) => {
+        const saved = localStorage.getItem(`gims_${key}`);
+        if(saved) {
+            try { setter(JSON.parse(saved)); } catch(e) { console.error("Error loading "+key, e); }
+        }
+    };
+
+    load("masterData", setMasterData);
+    load("students", setStudents);
+    load("transactions", setTransactions);
+    load("employees", setEmployees);
+    load("accounts", setAccounts);
+    load("users", setUsers);
+    load("roles", setRoles);
+    load("permissions", setPermissions);
+    load("budgets", setBudgets);
+    load("inventory", setInventory);
+    load("issuances", setIssuances);
+    load("auditLogs", setAuditLogs);
+    load("studentAttendance", setStudentAttendance);
+    load("employeeAttendance", setEmployeeAttendance);
+  }, []);
+
+  // Sync to local storage on every change
+  useEffect(() => { localStorage.setItem("gims_masterData", JSON.stringify(masterData)); }, [masterData]);
+  useEffect(() => { localStorage.setItem("gims_students", JSON.stringify(students)); }, [students]);
+  useEffect(() => { localStorage.setItem("gims_transactions", JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem("gims_employees", JSON.stringify(employees)); }, [employees]);
+  useEffect(() => { localStorage.setItem("gims_accounts", JSON.stringify(accounts)); }, [accounts]);
+  useEffect(() => { localStorage.setItem("gims_users", JSON.stringify(users)); }, [users]);
+  useEffect(() => { localStorage.setItem("gims_roles", JSON.stringify(roles)); }, [roles]);
+  useEffect(() => { localStorage.setItem("gims_permissions", JSON.stringify(permissions)); }, [permissions]);
+  useEffect(() => { localStorage.setItem("gims_budgets", JSON.stringify(budgets)); }, [budgets]);
+  useEffect(() => { localStorage.setItem("gims_inventory", JSON.stringify(inventory)); }, [inventory]);
+  useEffect(() => { localStorage.setItem("gims_issuances", JSON.stringify(issuances)); }, [issuances]);
+  useEffect(() => { localStorage.setItem("gims_auditLogs", JSON.stringify(auditLogs)); }, [auditLogs]);
+  useEffect(() => { localStorage.setItem("gims_studentAttendance", JSON.stringify(studentAttendance)); }, [studentAttendance]);
+  useEffect(() => { localStorage.setItem("gims_employeeAttendance", JSON.stringify(employeeAttendance)); }, [employeeAttendance]);
 
   const handlePostTransaction = (t: Transaction) => {
     let finalStatus: "Posted" | "Pending" = "Posted";
@@ -226,7 +265,6 @@ const App = () => {
       case "access": return <AccessControl permissions={permissions} onUpdate={setPermissions} roles={roles} />;
       case "import": return <DataImport onImportStudents={handleImportStudents} onImportAccounts={handleImportAccounts} />;
       case "history": return <HistoryModule logs={auditLogs} />;
-      // Update HR Render to pass subTab
       case "hr": return <HRModule employees={employees} onAddEmployee={(e: Employee) => setEmployees([...employees, e])} onUpdateEmployee={(e: Employee) => setEmployees(employees.map(emp => emp.id === e.id ? e : emp))} onDeleteEmployee={(id: string) => setEmployees(employees.filter(e => e.id !== id))} masterData={masterData} onPostPayroll={handlePostTransaction} onUpdateMasterData={updateMasterData} employeeAttendance={employeeAttendance} setEmployeeAttendance={setEmployeeAttendance} subTab={hrSubTab} />;
       case "budget": return <BudgetModule budgets={budgets} setBudgets={setBudgets} masterData={masterData} transactions={transactions} students={students} />;
       case "inventory": return <InventoryModule inventory={inventory} setInventory={setInventory} issuances={issuances} setIssuances={setIssuances} employees={employees} masterData={masterData} currentUser={userRole} onUpdateMasterData={updateMasterData} />;
@@ -265,9 +303,7 @@ const App = () => {
         </div>
         <div style={styles.nav}>
           {checkPerm("dashboard") && <div style={styles.navItem(activeTab === "dashboard")} onClick={() => { setActiveTab("dashboard"); setExpandedMenu(null); }}><span className="material-symbols-outlined">dashboard</span> Dashboard</div>}
-          
           {checkPerm("cashbook") && <div style={styles.navItem(activeTab === "cashbook")} onClick={() => { setActiveTab("cashbook"); setExpandedMenu(null); }}><span className="material-symbols-outlined">menu_book</span> Cash Book</div>}
-
           {checkPerm("students") && <div style={styles.navItem(activeTab === "students")} onClick={() => { setActiveTab("students"); setExpandedMenu(null); }}><span className="material-symbols-outlined">school</span> Student Biodata</div>}
           {checkPerm("promotion") && <div style={styles.navItem(activeTab === "promotion")} onClick={() => { setActiveTab("promotion"); setExpandedMenu(null); }}><span className="material-symbols-outlined">upgrade</span> Promotion</div>}
           {checkPerm("scanner") && <div style={styles.navItem(activeTab === "scanner")} onClick={() => { setActiveTab("scanner"); setExpandedMenu(null); }}><span className="material-symbols-outlined">face</span> Security Scanner</div>}

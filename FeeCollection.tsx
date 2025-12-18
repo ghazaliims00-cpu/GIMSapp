@@ -83,7 +83,6 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
     const total = (Object.values(fees) as number[]).reduce((a, b) => a + b, 0);
     if(total <= 0) return alert("Total amount must be greater than 0");
 
-    // Validation: Require Hospital selection if Hospital Fee is entered
     if (fees.hospital > 0 && !hospitalName) {
        return alert("Please select a Hospital from the dropdown before proceeding.");
     }
@@ -126,60 +125,57 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
      const dueDate = new Date(d.setDate(d.getDate() + 14)).toLocaleDateString(); 
 
      return (
-      <div style={{width: '320px', padding: '20px', border: '1px solid #e2e8f0', borderRadius: '2px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', fontSize: '0.8rem', fontFamily: 'serif'}}>
-          {/* Header */}
-          <div style={{textAlign: 'center', marginBottom: '10px'}}>
-              <h3 style={{margin: '0 0 5px 0', textTransform: 'uppercase', fontSize: '1rem', color: '#000', fontWeight: 'bold'}}>GHAZALI INSTITUTE OF MEDICAL SCIENCES</h3>
-              <div style={{fontSize: '0.9rem', color: '#333'}}>Fee Receipt / Challan</div>
+      <div style={{width: '320px', padding: '15px', border: '1px solid #000', borderRadius: '2px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', fontSize: '0.75rem', fontFamily: 'serif'}}>
+          <div style={{textAlign: 'center', marginBottom: '8px'}}>
+              <h3 style={{margin: '0 0 2px 0', textTransform: 'uppercase', fontSize: '0.9rem', color: '#000', fontWeight: 'bold'}}>GHAZALI INSTITUTE OF MEDICAL SCIENCES</h3>
+              <div style={{fontSize: '0.8rem', fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px'}}>{title}</div>
+              <div style={{fontSize: '0.75rem', color: '#333'}}>Fee Receipt / Challan</div>
           </div>
           
-          <div style={{borderBottom: '1px solid #000', marginBottom: '15px'}}></div>
+          <div style={{borderBottom: '1px solid #000', marginBottom: '10px'}}></div>
 
-          {/* Challan Info Box */}
-          <div style={{backgroundColor: '#f1f5f9', padding: '10px', display: 'flex', justifyContent: 'space-between', marginBottom: '15px', borderRadius: '4px'}}>
+          <div style={{backgroundColor: '#f1f5f9', padding: '6px', display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderRadius: '4px'}}>
               <div>
-                  <div style={{color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase'}}>Challan No</div>
-                  <div style={{fontWeight: 700, fontSize: '1rem'}}>{lastTxn?.voucherNo}</div>
+                  <div style={{color: '#64748b', fontSize: '0.65rem', textTransform: 'uppercase'}}>Challan No</div>
+                  <div style={{fontWeight: 700, fontSize: '0.9rem'}}>{lastTxn?.voucherNo}</div>
               </div>
               <div style={{textAlign: 'right'}}>
-                  <div style={{color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase'}}>Receipt Date</div>
-                  <div style={{fontWeight: 700, fontSize: '1rem'}}>{lastTxn?.date ? new Date(lastTxn.date).toLocaleDateString() : '-'}</div>
+                  <div style={{color: '#64748b', fontSize: '0.65rem', textTransform: 'uppercase'}}>Receipt Date</div>
+                  <div style={{fontWeight: 700, fontSize: '0.9rem'}}>{lastTxn?.date ? new Date(lastTxn.date).toLocaleDateString() : '-'}</div>
               </div>
           </div>
 
-          {/* Student Info Grid */}
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px'}}>
+          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '15px'}}>
               <div>
-                  <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase'}}>Student Name</div>
-                  <div style={{fontWeight: 600}}>{selectedStudent?.name}</div>
+                  <div style={{fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase'}}>Student Name</div>
+                  <div style={{fontWeight: 600, textTransform: 'uppercase'}}>{selectedStudent?.name}</div>
               </div>
               <div>
-                  <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase'}}>Father Name</div>
-                  <div style={{fontWeight: 600}}>{selectedStudent?.fatherName}</div>
+                  <div style={{fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase'}}>Father Name</div>
+                  <div style={{fontWeight: 600, textTransform: 'uppercase'}}>{selectedStudent?.fatherName}</div>
               </div>
               <div>
-                  <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase'}}>Program / Technology</div>
+                  <div style={{fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase'}}>Program / Technology</div>
                   <div style={{fontWeight: 600}}>{selectedStudent?.program} - {selectedStudent?.semester}</div>
               </div>
               <div>
-                  <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase'}}>Admission No</div>
+                  <div style={{fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase'}}>Admission No</div>
                   <div style={{fontWeight: 600}}>{selectedStudent?.admissionNo}</div>
               </div>
               <div style={{gridColumn: 'span 2'}}>
-                  <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase'}}>Campus</div>
+                  <div style={{fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase'}}>Campus</div>
                   <div style={{fontWeight: 600}}>{selectedStudent?.campus}</div>
               </div>
           </div>
 
-          <div style={{borderBottom: '1px solid #e2e8f0', marginBottom: '10px'}}></div>
+          <div style={{borderBottom: '1px solid #e2e8f0', marginBottom: '8px'}}></div>
 
-          {/* Fee Particulars */}
-          <div style={{marginBottom: '5px', fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Fee Particulars</div>
-          <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '15px'}}>
+          <div style={{marginBottom: '4px', fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Fee Particulars</div>
+          <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px'}}>
               <thead>
-                 <tr style={{borderBottom: '1px solid #e2e8f0'}}>
-                     <th style={{textAlign: 'left', padding: '5px 0', fontSize: '0.85rem'}}>Description</th>
-                     <th style={{textAlign: 'right', padding: '5px 0', fontSize: '0.85rem'}}>Amount (Rs)</th>
+                 <tr style={{borderBottom: '1px solid #000'}}>
+                     <th style={{textAlign: 'left', padding: '3px 0', fontSize: '0.8rem'}}>Description</th>
+                     <th style={{textAlign: 'right', padding: '3px 0', fontSize: '0.8rem'}}>Amount (Rs)</th>
                  </tr>
               </thead>
               <tbody>
@@ -187,7 +183,8 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
                       if(v > 0 && k !== 'hospitalName' && k !== 'fineType' && k !== 'dueDate' && k !== 'months') {
                           let label = k.replace(/([A-Z])/g, ' $1').trim();
                           label = label.charAt(0).toUpperCase() + label.slice(1);
-                          if(!label.toLowerCase().includes('fee') && !['fine', 'total'].includes(k)) label += " Fee";
+                          if(!label.toLowerCase().includes('fee') && !['fine', 'total', 'arrear'].includes(k)) label += " Fee";
+                          if (k === 'arrear') label = "Balance / Arrear";
                           
                           if (k === 'hospital' && lastTxn?.details?.hospitalName) {
                               label += ` (${lastTxn.details.hospitalName})`;
@@ -196,40 +193,39 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
                               label += ` (${lastTxn.details.fineType})`;
                           }
 
-                          return <tr key={k} style={{borderBottom: '1px dashed #f1f5f9'}}>
-                              <td style={{padding: '5px 0', color: '#b45309'}}>{label}</td>
-                              <td style={{textAlign: 'right', padding: '5px 0', color: '#b45309', fontWeight: 600}}>+{v.toLocaleString()}</td>
+                          return <tr key={k} style={{borderBottom: '1px dashed #e2e8f0'}}>
+                              <td style={{padding: '4px 0', color: '#000'}}>{label}</td>
+                              <td style={{textAlign: 'right', padding: '4px 0', color: '#000', fontWeight: 600}}>+{v.toLocaleString()}</td>
                           </tr>
                       }
                       return null;
                   })}
               </tbody>
               <tfoot>
-                  <tr style={{borderTop: '2px solid #000'}}>
-                      <td style={{padding: '10px 0', fontWeight: 700, fontSize: '1rem'}}>Total Amount</td>
-                      <td style={{textAlign: 'right', padding: '10px 0', fontWeight: 700, fontSize: '1rem'}}>Rs {lastTxn?.amount.toLocaleString()}</td>
+                  <tr style={{borderTop: '1.5px solid #000'}}>
+                      <td style={{padding: '8px 0', fontWeight: 700, fontSize: '0.9rem'}}>Total Amount</td>
+                      <td style={{textAlign: 'right', padding: '8px 0', fontWeight: 700, fontSize: '0.9rem'}}>Rs {lastTxn?.amount.toLocaleString()}</td>
                   </tr>
               </tfoot>
           </table>
 
-          {/* Footer */}
           <div style={{marginTop: 'auto'}}>
-              <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#334155', marginBottom: '5px'}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#334155', marginBottom: '5px'}}>
                   <div>Due Date: <strong>{dueDate}</strong></div>
                   <div style={{rowGap: '2px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
-                      <div style={{width: '60px', height: '60px', background: '#000', marginBottom: '5px'}}></div> 
-                      <div style={{fontSize: '0.6rem'}}>Scan to Verify</div>
+                      <div style={{width: '50px', height: '50px', background: '#000', marginBottom: '3px'}}></div> 
+                      <div style={{fontSize: '0.55rem'}}>Scan to Verify</div>
                   </div>
               </div>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.7rem', color: '#334155', marginBottom: '20px'}}>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.65rem', color: '#334155', marginBottom: '15px'}}>
                   <div>Print Date: <strong>{printDate}</strong></div>
                   <div>Print Time: <strong>{printTime}</strong></div>
                   <div>Printed By: <strong>{currentUser}</strong></div>
               </div>
               
-              <div style={{borderTop: '1px dashed #cbd5e1', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', marginTop: '20px'}}>
-                  <div style={{borderTop: '1px solid #334155', width: '40%', textAlign: 'center', paddingTop: '5px', fontSize: '0.7rem'}}>Student Signature</div>
-                  <div style={{borderTop: '1px solid #334155', width: '40%', textAlign: 'center', paddingTop: '5px', fontSize: '0.7rem'}}>Cashier Signature</div>
+              <div style={{borderTop: '1px dashed #000', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', marginTop: '10px'}}>
+                  <div style={{borderTop: '1px solid #000', width: '45%', textAlign: 'center', paddingTop: '3px', fontSize: '0.65rem'}}>Student Signature</div>
+                  <div style={{borderTop: '1px solid #000', width: '45%', textAlign: 'center', paddingTop: '3px', fontSize: '0.65rem'}}>Cashier Signature</div>
               </div>
           </div>
       </div>
@@ -240,19 +236,36 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
     <div style={{display: 'flex', gap: '25px', alignItems: 'start'}}>
       {showReceipt && (
           <div style={styles.modalOverlay}>
-              <div style={{backgroundColor: '#e2e8f0', padding: '40px', width: '100%', height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                  <div className="no-print" style={{width: '1000px', display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center'}}>
-                       <div style={{color: '#0f172a', fontWeight: 700, fontSize: '1.2rem'}}>Print Preview</div>
+              <style>{`
+                  @page { size: A4 landscape; margin: 10mm; }
+                  @media print {
+                      body { visibility: hidden; }
+                      #printable-area { 
+                          visibility: visible; 
+                          position: absolute; 
+                          left: 0; 
+                          top: 0; 
+                          width: 100%; 
+                          display: flex !important; 
+                          flex-direction: row !important; 
+                          justify-content: space-between !important;
+                      }
+                      .no-print { display: none !important; }
+                  }
+              `}</style>
+              <div style={{backgroundColor: '#e2e8f0', padding: '20px', width: '100%', height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                  <div className="no-print" style={{width: '100%', maxWidth: '1100px', display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center'}}>
+                       <div style={{color: '#0f172a', fontWeight: 700, fontSize: '1.2rem'}}>Print Preview (A4 Landscape)</div>
                        <div style={{display: 'flex', gap: '10px'}}>
                          <button style={styles.button("primary")} onClick={() => window.print()}>Print Receipt</button>
                          <button style={{...styles.button("secondary"), background: 'white'}} onClick={() => { setShowReceipt(false); resetForm(); }}>Close</button>
                       </div>
                   </div>
-                  <div id="printable-area" style={{display: 'flex', flexDirection: 'row', gap: '20px', backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
+                  <div id="printable-area" style={{display: 'flex', flexDirection: 'row', gap: '15px', backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', width: '100%', maxWidth: '1100px', justifyContent: 'center'}}>
                       <ReceiptTemplate title="Student Copy" />
-                      <div style={{borderLeft: '2px dashed #cbd5e1'}}></div>
-                      <ReceiptTemplate title="Bank/Office Copy" />
-                      <div style={{borderLeft: '2px dashed #cbd5e1'}}></div>
+                      <div style={{borderLeft: '1px dashed #000'}}></div>
+                      <ReceiptTemplate title="Bank Copy" />
+                      <div style={{borderLeft: '1px dashed #000'}}></div>
                       <ReceiptTemplate title="Institute Copy" />
                   </div>
               </div>
@@ -288,7 +301,8 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
                             }}
                          >
                             <div style={{fontWeight: 600, color: '#334155'}}>{s.name}</div>
-                            <div style={{fontSize: '0.8rem', color: '#64748b'}}>{s.admissionNo} • {s.program}</div>
+                            <div style={{fontSize: '0.8rem', color: '#64748b'}}>S/O: <span style={{fontWeight: 600}}>{s.fatherName}</span></div>
+                            <div style={{fontSize: '0.75rem', color: '#94a3b8'}}>{s.admissionNo} • {s.program}</div>
                          </div>
                       ))}
                    </div>
@@ -301,7 +315,8 @@ export const FeeCollection = ({ students, onCollectFee, masterData, accounts, cu
                         {selectedStudent.photo ? <img src={selectedStudent.photo} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}}/> : <span className="material-symbols-outlined" style={{fontSize: '40px', color: '#cbd5e1'}}>person</span>}
                    </div>
                    <h3 style={{margin: '0 0 5px 0', color: '#0369a1'}}>{selectedStudent.name}</h3>
-                   <div style={{fontSize: '0.9rem', color: '#334155', fontWeight: 500}}>{selectedStudent.program} ({selectedStudent.semester})</div>
+                   <div style={{fontSize: '0.9rem', color: '#334155', fontWeight: 600}}>S/O: {selectedStudent.fatherName}</div>
+                   <div style={{fontSize: '0.9rem', color: '#334155', fontWeight: 500, marginTop: '5px'}}>{selectedStudent.program} ({selectedStudent.semester})</div>
                    <div style={{fontSize: '0.8rem', color: '#64748b', marginBottom: '15px'}}>{selectedStudent.admissionNo}</div>
                    
                    <div style={{background: 'white', padding: '10px', borderRadius: '8px', marginBottom: '10px'}}>

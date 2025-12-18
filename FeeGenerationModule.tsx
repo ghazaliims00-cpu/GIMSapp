@@ -6,10 +6,11 @@ import { Transaction, Student, MONTHS, FEE_HEADS_DROPDOWN, Campus } from "./type
 export const FeeGenerationModule = ({ students, onGenerate, masterData, transactions }: any) => {
   const [viewMode, setViewMode] = useState<"generate" | "list">("generate");
 
-  const [filterProgram, setFilterProgram] = useState("MBBS");
-  const [filterSemester, setFilterSemester] = useState("1st");
-  const [filterCampus, setFilterCampus] = useState("Main Campus");
-  const [filterBoard, setFilterBoard] = useState("KMU");
+  // Defaults set to "All" ensures students are visible in preview immediately
+  const [filterProgram, setFilterProgram] = useState("All");
+  const [filterSemester, setFilterSemester] = useState("All");
+  const [filterCampus, setFilterCampus] = useState("All");
+  const [filterBoard, setFilterBoard] = useState("All");
   
   const [monthFrom, setMonthFrom] = useState("January");
   const [monthTo, setMonthTo] = useState("June");
@@ -22,6 +23,10 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
   const [listCampus, setListCampus] = useState("All");
   const [listBoard, setListBoard] = useState("All");
   const [listSemester, setListSemester] = useState("All");
+
+  // Pagination for Preview
+  const [previewPage, setPreviewPage] = useState(1);
+  const itemsPerPage = 20;
 
   const eligibleStudents = students.filter((s: Student) => 
     (filterProgram === "All" || s.program === filterProgram) && 
@@ -41,14 +46,12 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
   
   const getAmount = (s: Student) => {
       if (amountOverride !== "" && Number(amountOverride) > 0) return Number(amountOverride);
-      // Map based on head
-      // Logic Update: If Tuition Fee, calculate based on monthly rate * number of months
       if (selectedHead === "Tuition Fee") {
-          const monthlyFee = Math.round(s.tuitionFee / 6); // Assuming semester fee is for 6 months
+          const monthlyFee = Math.round(s.tuitionFee / 6); 
           return monthlyFee * monthCount;
       }
       if (selectedHead === "Admission Fee") return s.admissionFee;
-      return 0; // Default to 0 if not mapped and no override
+      return 0; 
   };
 
   const totalExpectedAmount = eligibleStudents.reduce((acc: number, s: Student) => acc + getAmount(s), 0);
@@ -68,7 +71,6 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
   const handleGenerate = () => {
     if(eligibleStudents.length === 0) return alert("No students found for criteria");
     
-    // Direct generation without confirm dialog
     const narrative = `${selectedHead} for ${monthFrom} to ${monthTo} ${year}`;
     const feeKey = getFeeKey(selectedHead);
 
@@ -90,13 +92,15 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
     });
     
     const validTxns = txns.filter((t: any) => t.amount > 0);
-
     if (validTxns.length === 0) return alert("Total amount is 0. Please set a valid fee amount or override.");
 
     onGenerate(validTxns);
     alert(`${validTxns.length} Fee records generated successfully!`);
     setViewMode("list");
   };
+
+  const totalPages = Math.ceil(eligibleStudents.length / itemsPerPage);
+  const paginatedPreview = eligibleStudents.slice((previewPage - 1) * itemsPerPage, previewPage * itemsPerPage);
 
   const generatedList = transactions
      .filter((t: Transaction) => t.type === 'FEE_DUE')
@@ -134,87 +138,90 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
       {viewMode === 'generate' ? (
          <div style={{display: 'flex', gap: '20px', alignItems: 'flex-start'}}>
             <div style={{flex: 2}}>
-                {/* STEP 1 */}
                 <div style={{...styles.card, borderLeft: '5px solid #3b82f6', position: 'relative', overflow: 'hidden'}}>
-                   <div style={{position: 'absolute', right: '-10px', top: '-10px', fontSize: '80px', opacity: 0.05, color: '#3b82f6', fontWeight: 'bold'}}>1</div>
                    <h3 style={{marginTop: 0, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '10px'}}>
                        <span className="material-symbols-outlined" style={{background: '#dbeafe', padding: '6px', borderRadius: '50%', fontSize: '20px'}}>filter_alt</span> 
-                       Target Students
+                       Step 1: Select Target Class
                    </h3>
-                   <div style={{...styles.grid2, marginBottom: '15px'}}>
+                   <div style={{...styles.grid2, marginBottom: '20px'}}>
                       <div>
                          <label style={styles.label}>Campus</label>
-                         <select style={styles.input} value={filterCampus} onChange={e => setFilterCampus(e.target.value)}>
+                         <select style={styles.input} value={filterCampus} onChange={e => { setFilterCampus(e.target.value); setPreviewPage(1); }}>
                             <option value="All">All Campuses</option>
                             {masterData.campuses.map((c: Campus) => <option key={c.name}>{c.name}</option>)}
                          </select>
                       </div>
                       <div>
                          <label style={styles.label}>Board</label>
-                         <select style={styles.input} value={filterBoard} onChange={e => setFilterBoard(e.target.value)}>
+                         <select style={styles.input} value={filterBoard} onChange={e => { setFilterBoard(e.target.value); setPreviewPage(1); }}>
                             <option value="All">All Boards</option>
                             {masterData.boards.map((b: string) => <option key={b}>{b}</option>)}
                          </select>
                       </div>
                       <div>
                          <label style={styles.label}>Program</label>
-                         <select style={styles.input} value={filterProgram} onChange={e => setFilterProgram(e.target.value)}>
+                         <select style={styles.input} value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setPreviewPage(1); }}>
                             <option value="All">All Programs</option>
                             {masterData.programs.map((p: string) => <option key={p}>{p}</option>)}
                          </select>
                       </div>
                       <div>
                          <label style={styles.label}>Semester</label>
-                         <select style={styles.input} value={filterSemester} onChange={e => setFilterSemester(e.target.value)}>
+                         <select style={styles.input} value={filterSemester} onChange={e => { setFilterSemester(e.target.value); setPreviewPage(1); }}>
                             <option value="All">All Semesters</option>
                             {masterData.semesters.map((s: string) => <option key={s}>{s}</option>)}
                          </select>
                       </div>
                    </div>
                    
-                   <div style={{background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                       <div style={{fontSize: '0.8rem', color: '#64748b', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase'}}>Preview Students ({eligibleStudents.length})</div>
-                       <div style={{maxHeight: '150px', overflowY: 'auto'}}>
+                   <div style={{background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
+                       <div style={{fontSize: '0.75rem', color: '#64748b', marginBottom: '10px', fontWeight: 700, textTransform: 'uppercase'}}>Student Preview ({eligibleStudents.length} Found)</div>
+                       <div style={{maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px', background: 'white'}}>
                            {eligibleStudents.length > 0 ? (
-                               <table style={{width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse'}}>
-                                   <thead>
-                                       <tr style={{borderBottom: '2px solid #cbd5e1', textAlign: 'left'}}>
-                                           <th style={{padding: '5px'}}>S.No</th>
-                                           <th style={{padding: '5px'}}>Name</th>
-                                           <th style={{padding: '5px'}}>Father Name</th>
-                                           <th style={{padding: '5px'}}>Technology</th>
-                                           <th style={{padding: '5px', textAlign: 'right'}}>Monthly Fee</th>
-                                           <th style={{padding: '5px', textAlign: 'right'}}>Total Generated</th>
+                               <table style={styles.table}>
+                                   <thead style={{position: 'sticky', top: 0, background: '#f1f5f9', zIndex: 1}}>
+                                       <tr>
+                                           <th style={styles.th}>S.No</th>
+                                           <th style={styles.th}>Adm No</th>
+                                           <th style={styles.th}>Name</th>
+                                           <th style={styles.th}>Program</th>
+                                           <th style={{...styles.th, textAlign: 'right'}}>Monthly</th>
+                                           <th style={{...styles.th, textAlign: 'right'}}>Total</th>
                                        </tr>
                                    </thead>
                                    <tbody>
-                                       {eligibleStudents.map((s, idx) => (
-                                           <tr key={s.admissionNo} style={{borderBottom: '1px solid #eee'}}>
-                                               <td style={{padding: '4px 5px'}}>{idx + 1}</td>
-                                               <td style={{padding: '4px 5px'}}>{s.name}</td>
-                                               <td style={{padding: '4px 5px', color: '#64748b'}}>{s.fatherName}</td>
-                                               <td style={{padding: '4px 5px', color: '#64748b'}}>{s.program}</td>
-                                               <td style={{padding: '4px 5px', textAlign: 'right'}}>{Math.round(s.tuitionFee/6).toLocaleString()}</td>
-                                               <td style={{padding: '4px 5px', textAlign: 'right', fontWeight: 600}}>Rs {getAmount(s).toLocaleString()}</td>
+                                       {paginatedPreview.map((s, idx) => (
+                                           <tr key={s.admissionNo}>
+                                               <td style={styles.td}>{(previewPage - 1) * itemsPerPage + idx + 1}</td>
+                                               <td style={styles.td}>{s.admissionNo}</td>
+                                               <td style={{...styles.td, fontWeight: 600}}>{s.name}</td>
+                                               <td style={styles.td}>{s.program}</td>
+                                               <td style={{...styles.td, textAlign: 'right'}}>{Math.round(s.tuitionFee/6).toLocaleString()}</td>
+                                               <td style={{...styles.td, textAlign: 'right', fontWeight: 700, color: '#166534'}}>Rs {getAmount(s).toLocaleString()}</td>
                                            </tr>
                                        ))}
                                    </tbody>
                                </table>
                            ) : (
-                               <div style={{color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '20px'}}>No students match criteria</div>
+                               <div style={{color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '40px'}}>No students found for current criteria</div>
                            )}
                        </div>
+                       {eligibleStudents.length > itemsPerPage && (
+                           <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '15px', padding: '10px', borderTop: '1px solid #eee'}}>
+                               <button disabled={previewPage === 1} style={{...styles.button("secondary"), padding: '5px 10px', opacity: previewPage === 1 ? 0.5 : 1}} onClick={() => setPreviewPage(previewPage - 1)}>Prev</button>
+                               <span style={{fontSize: '0.8rem', fontWeight: 600}}>Page {previewPage} of {totalPages}</span>
+                               <button disabled={previewPage === totalPages} style={{...styles.button("secondary"), padding: '5px 10px', opacity: previewPage === totalPages ? 0.5 : 1}} onClick={() => setPreviewPage(previewPage + 1)}>Next</button>
+                           </div>
+                       )}
                    </div>
                 </div>
 
-                {/* STEP 2 */}
-                <div style={{...styles.card, borderLeft: '5px solid #10b981', position: 'relative', overflow: 'hidden'}}>
-                   <div style={{position: 'absolute', right: '-10px', top: '-10px', fontSize: '80px', opacity: 0.05, color: '#10b981', fontWeight: 'bold'}}>2</div>
+                <div style={{...styles.card, borderLeft: '5px solid #10b981', marginTop: '20px'}}>
                    <h3 style={{marginTop: 0, color: '#065f46', display: 'flex', alignItems: 'center', gap: '10px'}}>
                        <span className="material-symbols-outlined" style={{background: '#d1fae5', padding: '6px', borderRadius: '50%', fontSize: '20px'}}>payments</span> 
-                       Fee Parameters
+                       Step 2: Define Fee Details
                    </h3>
-                   <div style={{...styles.grid3, marginBottom: '20px'}}>
+                   <div style={styles.grid3}>
                       <div>
                          <label style={styles.label}>Fee Head</label>
                          <select style={styles.input} value={selectedHead} onChange={e => setSelectedHead(e.target.value)}>
@@ -222,62 +229,42 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
                          </select>
                       </div>
                       <div>
-                         <label style={styles.label}>Amount (Optional Override)</label>
+                         <label style={styles.label}>Fiscal Year</label>
+                         <select style={styles.input} value={year} onChange={e => setYear(e.target.value)}>
+                            <option>2024</option><option>2025</option><option>2026</option>
+                         </select>
+                      </div>
+                      <div>
+                         <label style={styles.label}>Amount Override</label>
                          <input 
                             type="number" 
                             style={styles.input} 
-                            placeholder="Auto (from student)" 
+                            placeholder="Leave blank for auto" 
                             value={amountOverride} 
                             onChange={e => setAmountOverride(e.target.value ? Number(e.target.value) : "")} 
                          />
                       </div>
-                      <div>
-                         <label style={styles.label}>Fiscal Year</label>
-                         <select style={styles.input} value={year} onChange={e => setYear(e.target.value)}>
-                            {[2024, 2025, 2026].map(y => <option key={y}>{y}</option>)}
-                         </select>
-                      </div>
                    </div>
                    
-                   <div style={{...styles.grid3, marginBottom: '10px'}}>
-                      <div>
-                         <label style={styles.label}>Start Month</label>
-                         <select style={styles.input} value={monthFrom} onChange={e => setMonthFrom(e.target.value)}>
-                            {MONTHS.map(m => <option key={m}>{m}</option>)}
-                         </select>
-                      </div>
-                      <div>
-                         <label style={styles.label}>End Month</label>
-                         <select style={styles.input} value={monthTo} onChange={e => setMonthTo(e.target.value)}>
-                            {MONTHS.map(m => <option key={m}>{m}</option>)}
-                         </select>
-                      </div>
-                      <div>
-                         <label style={styles.label}>Due Date</label>
-                         <input type="date" style={styles.input} value={dueDate} onChange={e => setDueDate(e.target.value)} />
-                      </div>
+                   <div style={{...styles.grid3, marginTop: '20px'}}>
+                      <div><label style={styles.label}>Month From</label><select style={styles.input} value={monthFrom} onChange={e => setMonthFrom(e.target.value)}>{MONTHS.map(m => <option key={m}>{m}</option>)}</select></div>
+                      <div><label style={styles.label}>Month To</label><select style={styles.input} value={monthTo} onChange={e => setMonthTo(e.target.value)}>{MONTHS.map(m => <option key={m}>{m}</option>)}</select></div>
+                      <div><label style={styles.label}>Due Date</label><input type="date" style={styles.input} value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
                    </div>
                 </div>
             </div>
 
-            {/* SUMMARY PANEL */}
-            <div style={{flex: 1}}>
-                <div style={{...styles.card, background: 'linear-gradient(to bottom right, #1e293b, #0f172a)', color: 'white', border: 'none', position: 'sticky', top: '20px'}}>
-                    <h3 style={{marginTop: 0, color: '#38bdf8', borderBottom: '1px solid #334155', paddingBottom: '15px', marginBottom: '20px'}}>Generation Summary</h3>
+            <div style={{width: '320px'}}>
+                <div style={{...styles.card, background: '#1e293b', color: 'white', border: 'none', position: 'sticky', top: '20px'}}>
+                    <h3 style={{marginTop: 0, color: '#38bdf8', borderBottom: '1px solid #334155', paddingBottom: '15px', marginBottom: '20px'}}>Summary</h3>
                     
                     <div style={{marginBottom: '20px'}}>
-                        <div style={{fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase'}}>Target Students</div>
-                        <div style={{fontSize: '2.5rem', fontWeight: 700}}>{eligibleStudents.length}</div>
+                        <div style={{fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase'}}>Target Records</div>
+                        <div style={{fontSize: '2rem', fontWeight: 700}}>{eligibleStudents.length}</div>
                     </div>
 
                     <div style={{marginBottom: '20px'}}>
-                        <div style={{fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase'}}>Duration</div>
-                        <div style={{fontSize: '1.2rem', fontWeight: 600}}>{monthCount} Months</div>
-                        <div style={{fontSize: '0.85rem', color: '#64748b'}}>{monthFrom} - {monthTo} {year}</div>
-                    </div>
-
-                    <div style={{marginBottom: '30px', padding: '15px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px'}}>
-                        <div style={{fontSize: '0.8rem', color: '#cbd5e1', textTransform: 'uppercase', marginBottom: '5px'}}>Total Receivables</div>
+                        <div style={{fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase'}}>Total Amount</div>
                         <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#4ade80'}}>Rs {totalExpectedAmount.toLocaleString()}</div>
                     </div>
 
@@ -286,27 +273,16 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
                         onClick={handleGenerate}
                         disabled={eligibleStudents.length === 0}
                     >
-                        <span className="material-symbols-outlined">rocket_launch</span> Generate Fees
+                        <span className="material-symbols-outlined">rocket_launch</span> Generate In Bulk
                     </button>
-                    {eligibleStudents.length === 0 && <div style={{textAlign: 'center', color: '#ef4444', fontSize: '0.8rem', marginTop: '10px'}}>No students selected</div>}
                 </div>
             </div>
          </div>
       ) : (
          <div style={styles.card} id="printable-area">
-            <div className="no-print" style={{display: 'flex', gap: '15px', marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '8px'}}>
-               <select style={styles.input} value={listCampus} onChange={e => setListCampus(e.target.value)}>
-                  <option value="All">All Campuses</option>
-                  {masterData.campuses.map((c: Campus) => <option key={c.name}>{c.name}</option>)}
-               </select>
-               <select style={styles.input} value={listBoard} onChange={e => setListBoard(e.target.value)}>
-                  <option value="All">All Boards</option>
-                  {masterData.boards.map((b: string) => <option key={b}>{b}</option>)}
-               </select>
-               <select style={styles.input} value={listSemester} onChange={e => setListSemester(e.target.value)}>
-                  <option value="All">All Semesters</option>
-                  {masterData.semesters.map((s: string) => <option key={s}>{s}</option>)}
-               </select>
+            <div className="no-print" style={{display: 'flex', gap: '15px', marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
+               <select style={styles.input} value={listCampus} onChange={e => setListCampus(e.target.value)}><option value="All">All Campuses</option>{masterData.campuses.map((c: Campus) => <option key={c.name}>{c.name}</option>)}</select>
+               <select style={styles.input} value={listBoard} onChange={e => setListBoard(e.target.value)}><option value="All">All Boards</option>{masterData.boards.map((b: string) => <option key={b}>{b}</option>)}</select>
                <button style={styles.button("secondary")} onClick={() => window.print()}>Print List</button>
             </div>
 
@@ -330,7 +306,6 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
                         <td style={{...styles.td, textAlign: 'right'}}>{t.amount.toLocaleString()}</td>
                      </tr>
                   ))}
-                  {generatedList.length === 0 && <tr><td colSpan={5} style={{padding: '20px', textAlign: 'center', color: '#94a3b8'}}>No fee generation history found</td></tr>}
                </tbody>
             </table>
          </div>

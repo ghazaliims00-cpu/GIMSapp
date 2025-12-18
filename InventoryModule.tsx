@@ -19,16 +19,11 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
     const [issueSearch, setIssueSearch] = useState("");
 
     // Report Filters
+    const [reportSubTab, setReportSubTab] = useState<"status" | "campus">("status");
     const [filterCampus, setFilterCampus] = useState("All");
     const [filterCategory, setFilterCategory] = useState("All");
     const [filterCondition, setFilterCondition] = useState("All");
     const [reportSearch, setReportSearch] = useState("");
-
-    // Category Management
-    const [showCategoryManager, setShowCategoryManager] = useState(false);
-    const [newCategory, setNewCategory] = useState("");
-    const [editingCategory, setEditingCategory] = useState<string | null>(null);
-    const [editCategoryValue, setEditCategoryValue] = useState("");
 
     const employeeOptions = employees.map(e => ({ value: e.id, label: `${e.name} (${e.designation} - ${e.department})` }));
 
@@ -38,7 +33,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
     const totalIssued = totalItems - totalAvailable;
     const lowStock = inventory.filter(i => i.availableQuantity < 5).length;
 
-    // --- Inventory List Logic ---
     const handleAddItem = () => {
         if (!newItem.name || newItem.totalQuantity <= 0) return alert("Valid name and quantity required");
         const id = newItem.id || `INV-${Date.now()}`;
@@ -52,7 +46,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
             addedBy: newItem.addedBy || currentUser
         };
         
-        // Adjust available quantity on edit if total changes
         if (!isAddMode) {
             const oldItem = inventory.find(i => i.id === id);
             if(oldItem) {
@@ -67,7 +60,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
             setInventory(inventory.map(i => i.id === id ? item : i));
         }
         
-        // Reset form
         setNewItem({ id: "", name: "", category: masterData.inventoryCategories[0] || "Furniture", totalQuantity: 0, availableQuantity: 0, condition: "New", location: masterData?.campuses?.[0]?.name || "Main Campus", addedDate: today });
         setIsAddMode(false);
     };
@@ -78,35 +70,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
         }
     };
 
-    // --- Category Management ---
-    const handleAddCategory = () => {
-        if(newCategory && !masterData.inventoryCategories.includes(newCategory)) {
-            onUpdateMasterData('inventoryCategories', [...masterData.inventoryCategories, newCategory]);
-            setNewCategory("");
-        }
-    };
-
-    const handleDeleteCategory = (cat: string) => {
-        if(window.confirm(`Delete Category: ${cat}?`)) {
-            onUpdateMasterData('inventoryCategories', masterData.inventoryCategories.filter((c: string) => c !== cat));
-        }
-    };
-
-    const startEditCategory = (cat: string) => {
-        setEditingCategory(cat);
-        setEditCategoryValue(cat);
-    };
-
-    const saveEditCategory = () => {
-        if(editingCategory && editCategoryValue.trim() !== "") {
-            const newCats = masterData.inventoryCategories.map((c: string) => c === editingCategory ? editCategoryValue.trim() : c);
-            onUpdateMasterData('inventoryCategories', newCats);
-            setEditingCategory(null);
-            setEditCategoryValue("");
-        }
-    };
-
-    // --- Issue Logic ---
     const addToCart = (item: InventoryItem) => {
         const existing = cart.find(c => c.itemId === item.id);
         if (existing) return;
@@ -146,7 +109,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
             photo: receiverPhoto || undefined
         };
 
-        // Update Stock
         const newInventory = inventory.map(item => {
             const cartItem = cart.find(c => c.itemId === item.id);
             if (cartItem) {
@@ -160,40 +122,29 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
         setCurrentIssuance(issuance);
         setShowPrint(true);
         
-        // Reset
         setCart([]);
         setSelectedEmployee("");
         setReceiverPhoto(null);
     };
 
-    // --- Return Logic ---
     const handleReturn = (issuance: InventoryIssuance) => {
-        // Instant Return without confirmation dialog as requested
-        
-        // Restore Stock
         const newInventory = inventory.map(item => ({...item}));
-        
         issuance.items.forEach(i => {
             const itemIndex = newInventory.findIndex(inv => inv.id === i.itemId);
             if (itemIndex > -1) {
                 newInventory[itemIndex].availableQuantity += i.quantity;
             }
         });
-
         setInventory(newInventory);
-        
-        // Update Issuance Status
         const updatedIssuances = issuances.map(iss => 
             iss.id === issuance.id 
                 ? { ...iss, status: "Returned" as const, returnDate: new Date().toISOString().slice(0, 10) } 
                 : iss
         );
-        
         setIssuances(updatedIssuances);
         alert("Items returned successfully!");
     };
 
-    // --- Report Filter Logic ---
     const getFilteredInventory = () => {
         return inventory.filter(item => {
             if(filterCampus !== "All" && item.location !== filterCampus) return false;
@@ -218,16 +169,13 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                     <button style={styles.button("primary")} onClick={() => window.print()}>Print Form</button>
                     <button style={styles.button("secondary")} onClick={() => { setShowPrint(false); setCurrentIssuance(null); }}>Close</button>
                 </div>
-
                 <div id="printable-area" style={{border: '2px solid #000', padding: '30px', height: '100%', position: 'relative', fontFamily: 'serif'}}>
-                    {/* Header */}
                     <div style={{textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '15px', marginBottom: '20px'}}>
                         <h1 style={{margin: '0', textTransform: 'uppercase', fontSize: '1.8rem'}}>Ghazali Institute of Medical Sciences</h1>
                         <h3 style={{margin: '10px 0 0', fontWeight: 600, textTransform: 'uppercase', padding: '5px 15px', border: '1px solid #000', display: 'inline-block'}}>
                             {data.status === 'Issued' ? "Asset Handover Form / Gate Pass" : "Asset Return / Clearance Form"}
                         </h3>
                     </div>
-
                     <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '30px'}}>
                         <div style={{flex: 1}}>
                             <table style={{width: '100%', borderCollapse: 'collapse'}}>
@@ -244,7 +192,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                             {data.photo ? <img src={data.photo} style={{maxWidth: '100%', maxHeight: '100%'}} /> : "Receiver Photo"}
                         </div>
                     </div>
-
                     <h4 style={{borderBottom: '1px solid #000', paddingBottom: '5px', marginBottom: '10px'}}>Item Details</h4>
                     <table style={{width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '40px'}}>
                         <thead>
@@ -266,14 +213,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                             ))}
                         </tbody>
                     </table>
-
-                    <div style={{marginBottom: '60px', fontStyle: 'italic', fontSize: '0.9rem'}}>
-                        {data.status === 'Issued' ? 
-                            "I hereby acknowledge the receipt of the above-mentioned items in good condition. I am responsible for their safe custody." :
-                            "I hereby certify that the above items have been returned to the store in good condition and cleared from my record."
-                        }
-                    </div>
-
                     <div style={{display: 'flex', justifyContent: 'space-between', marginTop: 'auto'}}>
                         <div style={{textAlign: 'center', width: '200px'}}>
                             <div style={{borderBottom: '1px solid #000', height: '40px', marginBottom: '5px'}}></div>
@@ -285,7 +224,7 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                         </div>
                         <div style={{textAlign: 'center', width: '200px'}}>
                             <div style={{borderBottom: '1px solid #000', height: '40px', marginBottom: '5px'}}></div>
-                            <div>{data.status === 'Issued' ? "Principal" : "Store Keeper (Receiving)"}</div>
+                            <div>Director / Principal</div>
                         </div>
                     </div>
                 </div>
@@ -333,46 +272,7 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
 
                     <div style={styles.card}>
                         <div className="no-print" style={{marginBottom: '20px', background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                                <h4 style={{marginTop: 0, margin: 0, color: '#1e293b'}}>Add / Update Inventory</h4>
-                                <button style={{fontSize: '0.8rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px'}} onClick={() => setShowCategoryManager(!showCategoryManager)}>
-                                    <span className="material-symbols-outlined" style={{fontSize: '16px'}}>category</span> Manage Categories
-                                </button>
-                            </div>
-                            
-                            {showCategoryManager && (
-                                <div style={{marginBottom: '20px', padding: '20px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px'}}>
-                                    <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
-                                        <input style={styles.input} value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="New Category Name" />
-                                        <button style={styles.button("primary")} onClick={handleAddCategory}>Add Category</button>
-                                    </div>
-                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '10px'}}>
-                                        {masterData.inventoryCategories.map((c: string) => (
-                                            <div key={c} style={{padding: '5px 10px', background: '#f1f5f9', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #e2e8f0'}}>
-                                                {editingCategory === c ? (
-                                                    <>
-                                                        <input 
-                                                            style={{border: 'none', background: 'transparent', outline: 'none', borderBottom: '1px solid #3b82f6', width: '80px', fontSize: '0.85rem'}}
-                                                            value={editCategoryValue} 
-                                                            onChange={e => setEditCategoryValue(e.target.value)} 
-                                                            autoFocus
-                                                        />
-                                                        <span onClick={saveEditCategory} style={{cursor: 'pointer', color: '#166534', fontSize: '14px', fontWeight: 'bold'}}>✓</span>
-                                                        <span onClick={() => setEditingCategory(null)} style={{cursor: 'pointer', color: '#ef4444', fontSize: '14px', fontWeight: 'bold'}}>✕</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        {c}
-                                                        <span onClick={() => startEditCategory(c)} style={{cursor: 'pointer', color: '#3b82f6', fontSize: '14px', marginLeft: '5px'}}>✎</span>
-                                                        <span onClick={() => handleDeleteCategory(c)} style={{cursor: 'pointer', color: '#ef4444', fontWeight: 'bold', fontSize: '16px'}}>×</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
+                            <h4 style={{marginTop: 0, marginBottom: '15px', color: '#1e293b'}}>Add / Update Inventory Item</h4>
                             <div style={{...styles.grid3, alignItems: 'end', marginBottom: '15px'}}>
                                 <div><label style={styles.label}>Item Name</label><input style={styles.input} value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} placeholder="e.g. Office Chair" /></div>
                                 <div>
@@ -438,12 +338,7 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                         </h3>
                         <div style={{marginBottom: '20px'}}>
                             <label style={styles.label}>Receiver (Employee)</label>
-                            <SearchableSelect 
-                                options={employeeOptions} 
-                                value={selectedEmployee} 
-                                onChange={setSelectedEmployee} 
-                                placeholder="Search & Select Employee..." 
-                            />
+                            <SearchableSelect options={employeeOptions} value={selectedEmployee} onChange={setSelectedEmployee} placeholder="Search & Select Employee..." />
                         </div>
                         <div style={{marginBottom: '20px'}}>
                             <label style={styles.label}>Date</label>
@@ -452,27 +347,17 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                         <div style={{marginBottom: '20px'}}>
                             <label style={styles.label}>Receiver Photo (Optional)</label>
                             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '8px', background: '#f8fafc'}}>
-                                {receiverPhoto ? (
-                                    <img src={receiverPhoto} style={{width: '100px', height: '100px', objectFit: 'cover', borderRadius: '50%', marginBottom: '10px'}} />
-                                ) : (
-                                    <span className="material-symbols-outlined" style={{fontSize: '48px', color: '#cbd5e1', marginBottom: '10px'}}>add_a_photo</span>
-                                )}
+                                {receiverPhoto ? <img src={receiverPhoto} style={{width: '100px', height: '100px', objectFit: 'cover', borderRadius: '50%', marginBottom: '10px'}} /> : <span className="material-symbols-outlined" style={{fontSize: '48px', color: '#cbd5e1', marginBottom: '10px'}}>add_a_photo</span>}
                                 <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{fontSize: '0.8rem', width: '100%'}} />
                             </div>
                         </div>
                     </div>
-
                     <div style={{flex: 1, ...styles.card, borderTop: '4px solid #0369a1'}}>
                         <h3 style={{marginTop: 0, color: '#0369a1', display: 'flex', alignItems: 'center', gap: '10px'}}>
                             <span className="material-symbols-outlined">shopping_cart</span> Add Items to Cart
                         </h3>
                         <div style={{marginBottom: '10px'}}>
-                            <input 
-                                style={styles.input} 
-                                placeholder="Search items available in stock..." 
-                                value={issueSearch} 
-                                onChange={e => setIssueSearch(e.target.value)} 
-                            />
+                            <input style={styles.input} placeholder="Search items available in stock..." value={issueSearch} onChange={e => setIssueSearch(e.target.value)} />
                         </div>
                         <div style={{maxHeight: '250px', overflowY: 'auto', border: '1px solid #e2e8f0', marginBottom: '20px', borderRadius: '8px'}}>
                             {getIssuableItems().map(item => (
@@ -485,7 +370,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                                 </div>
                             ))}
                         </div>
-
                         <h4 style={{marginBottom: '10px', color: '#475569', borderBottom: '1px solid #eee', paddingBottom: '5px'}}>Cart Items</h4>
                         {cart.length === 0 ? <div style={{padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1'}}>Cart is empty</div> : (
                             <table style={styles.table}>
@@ -505,12 +389,7 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                                 </tbody>
                             </table>
                         )}
-
-                        <div style={{marginTop: '20px', textAlign: 'right'}}>
-                            <button style={styles.button("primary")} onClick={handleIssue} disabled={!selectedEmployee || cart.length === 0}>
-                                Generate Gate Pass & Print
-                            </button>
-                        </div>
+                        <div style={{marginTop: '20px', textAlign: 'right'}}><button style={styles.button("primary")} onClick={handleIssue} disabled={!selectedEmployee || cart.length === 0}>Generate Gate Pass & Print</button></div>
                     </div>
                 </div>
             )}
@@ -525,13 +404,8 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                                 <tr key={iss.id}>
                                     <td style={styles.td}>{iss.id}</td>
                                     <td style={styles.td}>{iss.date}</td>
-                                    <td style={styles.td}>
-                                        <div style={{fontWeight: 600}}>{iss.employeeName}</div>
-                                        <div style={{fontSize: '0.8rem', color: '#64748b'}}>{iss.employeeId}</div>
-                                    </td>
-                                    <td style={styles.td}>
-                                        {iss.items.map(i => <div key={i.itemId}>{i.name} (x{i.quantity})</div>)}
-                                    </td>
+                                    <td style={styles.td}><div style={{fontWeight: 600}}>{iss.employeeName}</div><div style={{fontSize: '0.8rem', color: '#64748b'}}>{iss.employeeId}</div></td>
+                                    <td style={styles.td}>{iss.items.map(i => <div key={i.itemId}>{i.name} (x{i.quantity})</div>)}</td>
                                     <td style={styles.td}><span style={styles.badge(iss.status === 'Issued' ? 'Pending' : 'Income')}>{iss.status}</span></td>
                                     <td style={styles.td}>
                                         <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
@@ -540,7 +414,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                                             ) : (
                                                 <span style={{color: '#64748b', fontSize: '0.8rem'}}>Returned on {iss.returnDate}</span>
                                             )}
-                                            
                                             {(iss.status === 'Returned' || iss.status === 'Issued') && (
                                                 <button style={{background: 'transparent', border: '1px solid #cbd5e1', cursor: 'pointer', color: '#1e40af', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem'}} onClick={() => { setCurrentIssuance(iss); setShowPrint(true); }}>
                                                     <span className="material-symbols-outlined" style={{fontSize: '16px', marginRight: '4px'}}>print</span> Print {iss.status === 'Returned' ? 'Clearance' : 'Slip'}
@@ -550,7 +423,6 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                                     </td>
                                 </tr>
                             ))}
-                            {issuances.length === 0 && <tr><td colSpan={6} style={{padding: '20px', textAlign: 'center', color: '#94a3b8'}}>No issuances recorded</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -560,82 +432,93 @@ export const InventoryModule = ({ inventory, setInventory, issuances, setIssuanc
                 <div style={styles.card}>
                     <div className="no-print">
                         <h3 style={{marginTop: 0}}>Inventory Reports</h3>
-                        <div style={{display: 'flex', gap: '15px', marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap'}}>
-                            <div>
-                                <label style={styles.label}>Search</label>
-                                <input style={styles.input} placeholder="Item Name / ID" value={reportSearch} onChange={e => setReportSearch(e.target.value)} />
-                            </div>
-                            <div>
-                                <label style={styles.label}>Campus</label>
-                                <select style={styles.input} value={filterCampus} onChange={e => setFilterCampus(e.target.value)}>
-                                    <option value="All">All Campuses</option>
-                                    {masterData.campuses.map((c: Campus) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label style={styles.label}>Category</label>
-                                <select style={styles.input} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-                                    <option value="All">All Categories</option>
-                                    {masterData.inventoryCategories.map((c: string) => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label style={styles.label}>Status / Condition</label>
-                                <select style={styles.input} value={filterCondition} onChange={e => setFilterCondition(e.target.value)}>
-                                    <option value="All">All Conditions</option>
-                                    <option>New</option><option>Used</option><option>Damaged</option><option>Expired</option>
-                                </select>
-                            </div>
-                            <div style={{marginLeft: 'auto', alignSelf: 'end'}}>
-                                <button style={styles.button("secondary")} onClick={() => window.print()}>
-                                    <span className="material-symbols-outlined">print</span> Print List
-                                </button>
-                            </div>
+                        <div style={{display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px'}}>
+                            <button style={styles.tabButton(reportSubTab === 'status')} onClick={() => setReportSubTab('status')}>Status Overview</button>
+                            <button style={styles.tabButton(reportSubTab === 'campus')} onClick={() => setReportSubTab('campus')}>Campus Distribution</button>
                         </div>
+
+                        {reportSubTab === 'status' && (
+                            <div style={{display: 'flex', gap: '15px', marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap'}}>
+                                <div><label style={styles.label}>Search</label><input style={styles.input} placeholder="Item Name / ID" value={reportSearch} onChange={e => setReportSearch(e.target.value)} /></div>
+                                <div><label style={styles.label}>Campus</label><select style={styles.input} value={filterCampus} onChange={e => setFilterCampus(e.target.value)}><option value="All">All Campuses</option>{masterData.campuses.map((c: Campus) => <option key={c.name} value={c.name}>{c.name}</option>)}</select></div>
+                                <div><label style={styles.label}>Category</label><select style={styles.input} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}><option value="All">All Categories</option>{masterData.inventoryCategories.map((c: string) => <option key={c} value={c}>{c}</option>)}</select></div>
+                                <div><label style={styles.label}>Condition</label><select style={styles.input} value={filterCondition} onChange={e => setFilterCondition(e.target.value)}><option value="All">All Conditions</option><option>New</option><option>Used</option><option>Damaged</option><option>Expired</option></select></div>
+                                <div style={{marginLeft: 'auto', alignSelf: 'end'}}><button style={styles.button("secondary")} onClick={() => window.print()}>Print List</button></div>
+                            </div>
+                        )}
                     </div>
 
                     <div id="printable-area">
-                        <div style={{textAlign: 'center', marginBottom: '20px'}}>
-                            <h2 style={{textTransform: 'uppercase', marginBottom: '5px'}}>Inventory Status Report</h2>
-                            <div style={{fontSize: '0.9rem', color: '#64748b'}}>Generated on: {new Date().toLocaleDateString()}</div>
-                        </div>
-                        <table style={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th style={styles.th}>S.No</th>
-                                    <th style={styles.th}>ID</th>
-                                    <th style={styles.th}>Item Name</th>
-                                    <th style={styles.th}>Category</th>
-                                    <th style={styles.th}>Condition</th>
-                                    <th style={styles.th}>Location</th>
-                                    <th style={{...styles.th, textAlign: 'right'}}>Total Qty</th>
-                                    <th style={{...styles.th, textAlign: 'right'}}>Available</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {getFilteredInventory().map((item, index) => (
-                                    <tr key={item.id}>
-                                        <td style={styles.td}>{index + 1}</td>
-                                        <td style={styles.td}>{item.id}</td>
-                                        <td style={{...styles.td, fontWeight: 600}}>{item.name}</td>
-                                        <td style={styles.td}>{item.category}</td>
-                                        <td style={styles.td}>
-                                            <span style={{
-                                                padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600,
-                                                background: item.condition === 'New' ? '#dcfce7' : item.condition === 'Damaged' || item.condition === 'Expired' ? '#fee2e2' : '#f3f4f6',
-                                                color: item.condition === 'New' ? '#166534' : item.condition === 'Damaged' || item.condition === 'Expired' ? '#991b1b' : '#374151'
-                                            }}>
-                                                {item.condition}
-                                            </span>
-                                        </td>
-                                        <td style={styles.td}>{item.location}</td>
-                                        <td style={{...styles.td, textAlign: 'right'}}>{item.totalQuantity}</td>
-                                        <td style={{...styles.td, textAlign: 'right', fontWeight: 'bold'}}>{item.availableQuantity}</td>
-                                    </tr>
-                                ))}
-                                {getFilteredInventory().length === 0 && <tr><td colSpan={8} style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>No items match the selected filters</td></tr>}
-                            </tbody>
-                        </table>
+                        {reportSubTab === 'status' ? (
+                            <>
+                                <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                                    <h2 style={{textTransform: 'uppercase', marginBottom: '5px'}}>Inventory Status Report</h2>
+                                    <div style={{fontSize: '0.9rem', color: '#64748b'}}>Generated on: {new Date().toLocaleDateString()}</div>
+                                </div>
+                                <table style={styles.table}>
+                                    <thead>
+                                        <tr><th style={styles.th}>S.No</th><th style={styles.th}>ID</th><th style={styles.th}>Name</th><th style={styles.th}>Category</th><th style={styles.th}>Condition</th><th style={styles.th}>Location</th><th style={{...styles.th, textAlign: 'right'}}>Total Qty</th><th style={{...styles.th, textAlign: 'right'}}>Available</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {getFilteredInventory().map((item, index) => (
+                                            <tr key={item.id}>
+                                                <td style={styles.td}>{index + 1}</td>
+                                                <td style={styles.td}>{item.id}</td>
+                                                <td style={{...styles.td, fontWeight: 600}}>{item.name}</td>
+                                                <td style={styles.td}>{item.category}</td>
+                                                <td style={styles.td}><span style={{padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600, background: item.condition === 'New' ? '#dcfce7' : item.condition === 'Damaged' ? '#fee2e2' : '#f3f4f6', color: item.condition === 'New' ? '#166534' : item.condition === 'Damaged' ? '#991b1b' : '#374151'}}>{item.condition}</span></td>
+                                                <td style={styles.td}>{item.location}</td>
+                                                <td style={{...styles.td, textAlign: 'right'}}>{item.totalQuantity}</td>
+                                                <td style={{...styles.td, textAlign: 'right', fontWeight: 'bold'}}>{item.availableQuantity}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{textAlign: 'center', marginBottom: '30px'}}>
+                                    <h2 style={{textTransform: 'uppercase', marginBottom: '5px'}}>Campus Wise Asset Distribution</h2>
+                                    <div style={{fontSize: '0.9rem', color: '#64748b'}}>Full Detailed Assets Breakdown</div>
+                                </div>
+                                {masterData.campuses.map((c: Campus) => {
+                                    const campusItems = inventory.filter(i => i.location === c.name);
+                                    if (campusItems.length === 0) return null;
+                                    return (
+                                        <div key={c.name} style={{marginBottom: '40px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden'}}>
+                                            <div style={{background: '#f8fafc', padding: '15px 20px', borderBottom: '2px solid #0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                <h3 style={{margin: 0}}>{c.name} Assets</h3>
+                                                <div style={{fontWeight: 700, fontSize: '0.9rem'}}>Total Items: {campusItems.length}</div>
+                                            </div>
+                                            <table style={styles.table}>
+                                                <thead>
+                                                    <tr>
+                                                        <th style={styles.th}>Code</th>
+                                                        <th style={styles.th}>Item Name</th>
+                                                        <th style={styles.th}>Category</th>
+                                                        <th style={styles.th}>Condition</th>
+                                                        <th style={{...styles.th, textAlign: 'right'}}>In Stock</th>
+                                                        <th style={{...styles.th, textAlign: 'right'}}>Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {campusItems.map(item => (
+                                                        <tr key={item.id}>
+                                                            <td style={styles.td}>{item.id}</td>
+                                                            <td style={{...styles.td, fontWeight: 600}}>{item.name}</td>
+                                                            <td style={styles.td}>{item.category}</td>
+                                                            <td style={styles.td}>{item.condition}</td>
+                                                            <td style={{...styles.td, textAlign: 'right', fontWeight: 700, color: '#166534'}}>{item.availableQuantity}</td>
+                                                            <td style={{...styles.td, textAlign: 'right'}}>{item.totalQuantity}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )
+                                })}
+                            </>
+                        )}
                     </div>
                 </div>
             )}

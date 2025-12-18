@@ -4,9 +4,29 @@ export const FINE_TYPES = ["Exam Fee", "Late Coming", "Absent"];
 export const FEE_HEADS_FILTER = ["Admission Fee", "Tuition Fee", "Arrear Fee", "Exam Fee", "Hospital Fee", "Registration Fee", "Diploma Fee", "Affiliation Fee", "Fine Fee", "Grace Mark Fee", "UFM Fee", "ID Card Fee"];
 export const FEE_HEADS_DROPDOWN = ["Tuition Fee", "Admission Fee", "Registration Fee", "Exam Fee", "Fine", "Other"];
 
-export const INITIAL_PROGRAMS = ["MBBS", "BDS", "Nursing", "Pharmacy", "DPT", "Anesthesia", "Radiology", "Surgical", "Dental", "DIP-Pathology", "DIP-Radiology", "CNA", "BS Programs", "LHV"];
-export const INITIAL_SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "1st Year", "2nd Year"];
-export const INITIAL_BOARDS = ["KPK Medical Faculty", "PNC", "KMU", "Pharmacy Council"];
+// Unified Clean List of All Programs
+export const INITIAL_PROGRAMS = [
+    "BS Nursing", "BS Radiology", "BS Anesthesia", "BS Health", "BS Pathology", "BS Dental",
+    "DPT", "Pharmacy-B", "LHV", "CNA",
+    "Diploma Surgical", "Diploma Anesthesia", "Diploma Dental", 
+    "Diploma Health", "Diploma Cardiology", "Diploma Pharmacy", "Diploma Dialysis", 
+    "Radiology", "Pathology" 
+];
+
+export const INITIAL_SEMESTERS = [
+    "Jan-2026", "Sept-2025", "Sept-2024", "Sept-2023", "Jan-2024",
+    "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", 
+    "1st Year", "2nd Year"
+];
+
+export const BOARD_PROGRAM_MAP: Record<string, string[]> = {
+    "KPK Medical Faculty": ["Diploma Surgical", "Diploma Anesthesia", "Diploma Dental", "Diploma Health", "Diploma Cardiology", "Diploma Pharmacy", "Diploma Dialysis"],
+    "KMU": ["BS Nursing", "BS Radiology", "BS Anesthesia", "BS Health", "BS Pathology", "BS Dental", "DPT"],
+    "PNC": ["BS Nursing", "LHV", "CNA"],
+    "Pharmacy Council": ["Pharmacy-B"]
+};
+
+export const INITIAL_BOARDS = ["KMU", "KPK Medical Faculty", "PNC", "Pharmacy Council"];
 export const INITIAL_SESSIONS = ["2023-24", "2024-25", "2025-26"];
 export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export const INITIAL_INVENTORY_CATEGORIES = ["Furniture", "Electronics", "Stationery", "Vehicle", "Other"];
@@ -19,7 +39,6 @@ export const KPK_DISTRICTS = [
    "South Waziristan", "Swabi", "Swat", "Tank", "Torghar", "Upper Chitral", "Upper Dir", "Upper Kohistan"
 ];
 
-// Simulated list of towns/areas for address suggestions
 export const KPK_LOCATIONS = [
     "University Road, Peshawar", "Hayatabad Phase 1, Peshawar", "Hayatabad Phase 3, Peshawar", "Saddar, Peshawar", "Gulbahar, Peshawar",
     "Sheikh Maltoon Town, Mardan", "Baghdada, Mardan", "Takht Bhai, Mardan",
@@ -46,38 +65,26 @@ export const INITIAL_CAMPUSES: Campus[] = [
    { name: "Phase 3 Campus", address: "Hayatabad Phase 3", principal: "Mr. Khan", phone: "091-555666" }
 ];
 
-// Mapping Boards to Specific Technologies (Programs)
-export const BOARD_PROGRAM_MAP: Record<string, string[]> = {
-   "KMU": ["MBBS", "BDS", "DPT", "Pharmacy", "BS Programs"],
-   "PNC": ["Nursing", "CNA", "LHV"],
-   "KPK Medical Faculty": ["Anesthesia", "Radiology", "Surgical", "Dental", "DIP-Pathology", "DIP-Radiology"],
-   "Pharmacy Council": ["Pharmacy"]
-};
-
-// Standard Static Fees for Calculation
 export const STANDARD_FEE_STRUCTURE: Record<string, Record<string, { admission: number, tuition: number, misc?: number, affiliation?: number }>> = {
    "KPK Medical Faculty": {
-      "Anesthesia": { admission: 33000, tuition: 48000 },
-      "Radiology": { admission: 33000, tuition: 48000 },
-      "Surgical": { admission: 33000, tuition: 48000 },
-      "Dental": { admission: 33000, tuition: 48000 },
-      "DIP-Pathology": { admission: 33000, tuition: 48000 },
-      "DIP-Radiology": { admission: 33000, tuition: 48000 }
+      "Diploma Surgical": { admission: 33000, tuition: 48000 },
+      "Diploma Anesthesia": { admission: 33000, tuition: 48000 },
+      "Diploma Dental": { admission: 33000, tuition: 48000 },
+      "Diploma Health": { admission: 33000, tuition: 48000 },
+      "Diploma Cardiology": { admission: 33000, tuition: 48000 },
+      "Diploma Pharmacy": { admission: 33000, tuition: 48000 },
+      "Diploma Dialysis": { admission: 33000, tuition: 48000 }
    },
    "KMU": {
-      "MBBS": { admission: 50000, tuition: 85000, misc: 56000, affiliation: 30000 },
-      "BDS": { admission: 50000, tuition: 85000, misc: 56000, affiliation: 30000 },
-      "DPT": { admission: 50000, tuition: 85000, misc: 56000, affiliation: 30000 },
-      "Pharmacy": { admission: 50000, tuition: 85000, misc: 56000, affiliation: 30000 },
-      "BS Programs": { admission: 50000, tuition: 85000, misc: 56000, affiliation: 30000 }
+      "DPT": { admission: 50000, tuition: 85000, misc: 56000, affiliation: 30000 }
    },
    "PNC": {
-      "Nursing": { admission: 0, tuition: 150000 }, // BS Nursing
+      "BS Nursing": { admission: 0, tuition: 150000 },
       "CNA": { admission: 34000, tuition: 54000 },
       "LHV": { admission: 34000, tuition: 54000 }
    },
    "Pharmacy Council": {
-      "Pharmacy": { admission: 33000, tuition: 42000 }
+      "Pharmacy-B": { admission: 33000, tuition: 42000 }
    }
 };
 
@@ -98,7 +105,7 @@ export type Transaction = {
   chequeNo?: string;
   chequeStatus?: "Issued" | "Cleared" | "Bounced";
   recordedBy?: string;
-  department?: string; // Added for Budget Tracking
+  department?: string; 
 };
 
 export type Student = {
@@ -111,9 +118,9 @@ export type Student = {
   balance: number;
   address: string;
   phone: string;
-  cnic?: string; // Added CNIC
+  cnic?: string; 
   board: string;
-  district?: string; // Added District
+  district?: string; 
   remarks: string;
   photo?: string; 
   admissionFee: number;
@@ -133,11 +140,11 @@ export type Employee = {
    id: string;
    name: string;
    fatherName: string;
-   designation: string; // Category
+   designation: string; 
    department: string;
    campus: string;
    basicSalary: number;
-   security?: number; // Added Security Amount
+   security?: number; 
    joiningDate: string;
    phone: string;
    cnic: string;
@@ -146,9 +153,9 @@ export type Employee = {
    maritalStatus?: string;
    email?: string;
    address?: string;
-   district?: string; // New Field
-   nationality?: string; // New Field
-   employeeType?: string; // Permanent, Contract, etc.
+   district?: string; 
+   nationality?: string; 
+   employeeType?: string; 
    bankName?: string;
    accountNumber?: string;
    status: "Active" | "Inactive";
@@ -184,7 +191,7 @@ export type StudentAttendance = {
 };
 
 export type EmployeeAttendance = {
-    id: string; // empId-date
+    id: string; 
     employeeId: string;
     name: string;
     date: string;
@@ -238,8 +245,8 @@ export type InventoryIssuance = {
     items: { itemId: string; name: string; quantity: number }[];
     status: "Issued" | "Returned";
     returnDate?: string;
-    photo?: string; // Face picture
-    signature?: string; // Signature placeholder
+    photo?: string; 
+    signature?: string; 
 };
 
 export const INITIAL_INVENTORY: InventoryItem[] = [
@@ -280,15 +287,10 @@ export const INITIAL_ACCOUNTS: Account[] = [
 ];
 
 export const INITIAL_STUDENTS_DATA: Student[] = [
-  // KMU Students (MBBS/BDS)
-  { admissionNo: "KMU-24-001", name: "Ali Khan", fatherName: "Rehman Khan", cnic: "17301-1234567-1", program: "MBBS", semester: "3rd", campus: "Main Campus", balance: 15000, address: "University Road, Peshawar", district: "Peshawar", phone: "0300-1234567", board: "KMU", remarks: "Regular", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-01", dob: "2002-05-15", recordedBy: "Admin" },
-  { admissionNo: "KMU-24-002", name: "Ayesha Bibi", fatherName: "Gul Zaman", cnic: "17301-7654321-2", program: "MBBS", semester: "1st", campus: "Girl Campus", balance: 0, address: "Sheikh Maltoon Town, Mardan", district: "Mardan", phone: "0312-9876543", board: "KMU", remarks: "", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Female", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-05", dob: "2003-02-20", recordedBy: "Admin" },
-  
-  // PNC Students (Nursing)
-  { admissionNo: "PNC-24-001", name: "Sana Gul", fatherName: "Gul Khan", cnic: "17301-9999999-3", program: "Nursing", semester: "1st", campus: "Girl Campus", balance: 0, address: "Jungle Khel, Kohat", district: "Kohat", phone: "0332-1231231", board: "PNC", remarks: "Scholarship", tuitionFee: 150000, admissionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 600000, gender: "Female", nationality: "Pakistani", status: "Free", admissionDate: "2024-03-01", dob: "2004-01-01", recordedBy: "Manager" },
-  
-  // KPK Medical Faculty
-  { admissionNo: "KPK-24-001", name: "Rashid Minhas", fatherName: "Minhas Khan", cnic: "17301-8888888-4", program: "Anesthesia", semester: "1st", campus: "Main Campus", balance: 10000, address: "Timergara, Lower Dir", district: "Lower Dir", phone: "0302-3453456", board: "KPK Medical Faculty", remarks: "", tuitionFee: 48000, admissionFee: 33000, miscCharges: 0, affiliationFee: 0, totalCourseFee: 225000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-04-01", dob: "2003-04-04", recordedBy: "Admin" },
+  { admissionNo: "KMU-24-001", name: "Ali Khan", fatherName: "Rehman Khan", cnic: "17301-1234567-1", program: "BS Nursing", semester: "3rd", campus: "Main Campus", balance: 15000, address: "University Road, Peshawar", district: "Peshawar", phone: "0300-1234567", board: "PNC", remarks: "Regular", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-01", dob: "2002-05-15", recordedBy: "Admin" },
+  { admissionNo: "KMU-24-002", name: "Ayesha Bibi", fatherName: "Gul Zaman", cnic: "17301-7654321-2", program: "DPT", semester: "1st", campus: "Girl Campus", balance: 0, address: "Sheikh Maltoon Town, Mardan", district: "Mardan", phone: "0312-9876543", board: "KMU", remarks: "", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Female", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-05", dob: "2003-02-20", recordedBy: "Admin" },
+  { admissionNo: "PNC-24-001", name: "Sana Gul", fatherName: "Gul Khan", cnic: "17301-9999999-3", program: "BS Nursing", semester: "1st", campus: "Girl Campus", balance: 0, address: "Jungle Khel, Kohat", district: "Kohat", phone: "0332-1231231", board: "PNC", remarks: "Scholarship", tuitionFee: 150000, admissionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 600000, gender: "Female", nationality: "Pakistani", status: "Free", admissionDate: "2024-03-01", dob: "2004-01-01", recordedBy: "Manager" },
+  { admissionNo: "KPK-24-001", name: "Rashid Minhas", fatherName: "Minhas Khan", cnic: "17301-8888888-4", program: "Diploma Anesthesia", semester: "1st", campus: "Main Campus", balance: 10000, address: "Timergara, Lower Dir", district: "Lower Dir", phone: "0302-3453456", board: "KPK Medical Faculty", remarks: "", tuitionFee: 48000, admissionFee: 33000, miscCharges: 0, affiliationFee: 0, totalCourseFee: 225000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-04-01", dob: "2003-04-04", recordedBy: "Admin" },
 ];
 
 export const INITIAL_EMPLOYEES_DATA: Employee[] = [
@@ -304,4 +306,4 @@ export const INITIAL_USERS: User[] = [
    { username: "cashier", role: "Cashier", password: "123" }
 ];
 
-export const INITIAL_TRANSACTIONS: Transaction[] = []; // Cleared
+export const INITIAL_TRANSACTIONS: Transaction[] = [];

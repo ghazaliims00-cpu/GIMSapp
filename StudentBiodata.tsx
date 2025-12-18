@@ -60,50 +60,58 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
 
   useEffect(() => {
      if (formData.board) {
-        setAvailablePrograms(BOARD_PROGRAM_MAP[formData.board] || masterData.programs);
+        // Strict Program Filtering
+        let progs: string[] = [];
+        if (formData.board === "KPK Medical Faculty") {
+           progs = masterData.programs.filter((p: string) => p.startsWith("Diploma"));
+        } else if (formData.board === "KMU") {
+           progs = masterData.programs.filter((p: string) => p.startsWith("BS") || p === "DPT");
+        } else if (formData.board === "PNC") {
+           progs = masterData.programs.filter((p: string) => p === "BS Nursing" || p === "LHV" || p === "CNA");
+        } else if (formData.board === "Pharmacy Council") {
+           progs = masterData.programs.filter((p: string) => p === "Pharmacy-B");
+        } else {
+           progs = masterData.programs;
+        }
+        setAvailablePrograms(progs);
         
-        // Dynamic Semester and Campus Logic
+        // Strict Semester and Campus Logic
         let allowedCampuses = masterData.campuses;
+        let allowedSems: string[] = [];
         
         if(formData.board === "KPK Medical Faculty") {
-           setAvailableSemesters(["1st", "2nd", "3rd", "4th"]);
-           // Allow Main Campus AND Girl Campus for KPK Medical Faculty
+           allowedSems = ["Jan-2026", "1st", "2nd", "3rd", "4th"];
            allowedCampuses = masterData.campuses.filter((c:Campus) => c.name === "Main Campus" || c.name === "Girl Campus");
-
         } else if (formData.board === "Pharmacy Council") {
-           setAvailableSemesters(["1st Year", "2nd Year"]);
+           allowedSems = ["Jan-2024", "1st Year", "2nd Year"];
            allowedCampuses = masterData.campuses.filter((c:Campus) => c.name === "Main Campus");
-
         } else if (formData.board === "KMU") {
-           // KMU Logic: 1st to 10th Semester
-           setAvailableSemesters(["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"]);
+           allowedSems = ["Sept-2025", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"];
            allowedCampuses = masterData.campuses.filter((c:Campus) => c.name === "Phase 3 Campus");
-
         } else if (formData.board === "PNC") {
-            if(formData.program === "BS Nursing" || formData.program === "Nursing") {
-               setAvailableSemesters(["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"]);
-            } else {
-               // LHV, CNA
-               setAvailableSemesters(["1st Year", "2nd Year"]);
-            }
-            // PNC Campuses remain All (Default)
+           allowedSems = ["Sept-2023", "Sept-2024", "Sept-2025", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+           // Note: BS Nursing uses 8 sems, LHV/CNA usually use years, but user specified this combined list for PNC
         } else {
-           setAvailableSemesters(masterData.semesters);
+           allowedSems = masterData.semesters;
         }
 
+        setAvailableSemesters(allowedSems);
         setAvailableCampuses(allowedCampuses);
         
-        // Auto-select campus if only one option is available and it's different from current
-        if (allowedCampuses.length === 1 && formData.campus !== allowedCampuses[0].name) {
-             setFormData(prev => ({ ...prev, campus: allowedCampuses[0].name }));
-        }
+        // Auto-Reset Invalid Choices
+        setFormData(prev => ({
+            ...prev,
+            program: progs.includes(prev.program) ? prev.program : "",
+            semester: allowedSems.includes(prev.semester) ? prev.semester : "",
+            campus: allowedCampuses.some((c:Campus) => c.name === prev.campus) ? prev.campus : (allowedCampuses[0]?.name || prev.campus)
+        }));
 
      } else {
         setAvailablePrograms(masterData.programs);
         setAvailableSemesters(masterData.semesters);
         setAvailableCampuses(masterData.campuses);
      }
-  }, [formData.board, formData.program, masterData.programs, masterData.semesters, masterData.campuses]);
+  }, [formData.board, masterData]);
 
   useEffect(() => {
       // Look up static fees when Board or Program changes
@@ -121,7 +129,6 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
   // Recalculate Total Course Fee whenever components change
   useEffect(() => {
      if (view === "form") {
-        // Ensure all are numbers
         const adm = Number(formData.admissionFee) || 0;
         const tuit = Number(formData.tuitionFee) || 0;
         const misc = Number(formData.miscCharges) || 0;
@@ -129,17 +136,13 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
         
         let calculatedTotal = 0;
 
-        // FIXED LOGIC for KPK Medical Faculty & Pharmacy Council (2 Years = 4 Semesters)
         if (formData.board === "KPK Medical Faculty" || formData.board === "Pharmacy Council") {
-            // Admission + (Semester Fee * 4) + Misc + Affiliation
             calculatedTotal = adm + (tuit * 4) + misc + aff;
         } 
         else if (formData.board === "PNC") {
             if (formData.program === "CNA" || formData.program === "LHV") {
-                // Admission + Semester * 4
                 calculatedTotal = adm + (tuit * 4); 
-            } else if (formData.program === "Nursing" || formData.program === "BS Nursing") {
-                // BS Nursing Logic
+            } else if (formData.program === "BS Nursing") {
                 const y1 = tuit * 2;
                 const y2 = (tuit * 1.1) * 2;
                 const y3 = (tuit * 1.21) * 2;
@@ -149,66 +152,48 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                calculatedTotal = adm + (tuit * 8) + misc + aff;
             }
         } else {
-            // Default Logic
             let duration = 8;
-            if(formData.program === "CNA" || formData.program === "LHV" || formData.program.includes("DIP")) duration = 4;
+            if(formData.program === "CNA" || formData.program === "LHV" || formData.program.includes("Diploma")) duration = 4;
             calculatedTotal = adm + (tuit * duration) + misc + aff;
         }
         
-        // Round to nearest whole number
         calculatedTotal = Math.round(calculatedTotal);
-
         if(formData.totalCourseFee !== calculatedTotal) {
             setFormData(prev => ({...prev, totalCourseFee: calculatedTotal}));
         }
      }
   }, [formData.admissionFee, formData.tuitionFee, formData.miscCharges, formData.affiliationFee, formData.program, formData.board]);
 
-  // --- Formatting Helper Functions ---
   const formatCNIC = (val: string) => {
-      // Remove all non-digits
       const digits = val.replace(/\D/g, '').slice(0, 13);
-      
-      // #####-#######-#
       if (digits.length <= 5) return digits;
       if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
       return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
   };
 
   const formatPhone = (val: string) => {
-      // Remove all non-digits
       const digits = val.replace(/\D/g, '').slice(0, 11);
-      
-      // ####-#######
       if (digits.length <= 4) return digits;
       return `${digits.slice(0, 4)}-${digits.slice(4)}`;
    };
 
-   // --- Smart Address Logic ---
   const handleAddressChange = (val: string) => {
       setFormData({...formData, address: val});
-      setErrors({...errors, address: !val}); // Clear error if typing
+      setErrors({...errors, address: !val});
 
       if(val.length > 2) {
           const term = val.toLowerCase();
-          
-          // Check for common typos first and Auto-Correct suggestions
           let correction = null;
           Object.keys(COMMON_TYPOS).forEach(typo => {
               if (term.includes(typo)) {
-                  // If typo found, offer correction
                   correction = val.toLowerCase().replace(typo, COMMON_TYPOS[typo]);
-                  // Capitalize first letters
                   correction = correction.replace(/\b\w/g, l => l.toUpperCase());
               }
           });
 
-          // Filter standard locations
           const suggestions = EXPANDED_LOCATIONS.filter(loc => {
               const lowerLoc = loc.toLowerCase();
               if(lowerLoc.includes(term)) return true;
-              
-              // Fuzzy
               let matchCount = 0;
               let lastIndex = -1;
               for(const char of term) {
@@ -222,7 +207,6 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
           }).sort();
 
           const finalSuggestions = correction && !suggestions.includes(correction) ? [correction, ...suggestions] : suggestions;
-
           setAddressSuggestions(finalSuggestions.slice(0, 5));
           setShowSuggestions(true);
       } else {
@@ -239,7 +223,6 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
   const validateForm = () => {
       const newErrors: any = {};
       const requiredFields = ['admissionNo', 'name', 'fatherName', 'program', 'semester', 'campus', 'board', 'phone', 'cnic', 'district', 'address', 'dob', 'gender', 'nationality', 'status'];
-      
       let isValid = true;
       requiredFields.forEach(field => {
           if(!(formData as any)[field]) {
@@ -247,21 +230,14 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
               isValid = false;
           }
       });
-
       setErrors(newErrors);
       return isValid;
   };
 
   const handleSave = () => {
-      if(!validateForm()) {
-          alert("Please fill all required fields highlighted in red.");
-          return;
-      }
-      if(editMode) {
-          onUpdateStudent(formData);
-      } else {
-          onAddStudent(formData);
-      }
+      if(!validateForm()) return alert("Please fill all required fields highlighted in red.");
+      if(editMode) onUpdateStudent(formData);
+      else onAddStudent(formData);
       setView("list");
   };
 
@@ -284,7 +260,7 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
   };
 
   const handleDelete = () => {
-     if(window.confirm(`Are you sure you want to delete ${formData.name}? This action cannot be undone.`)) {
+     if(window.confirm(`Are you sure you want to delete ${formData.name}?`)) {
         onDeleteStudent(formData.admissionNo);
         setView("list");
      }
@@ -297,7 +273,6 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
      return matchName && matchFather && matchAdm;
   });
 
-  // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredStudents.slice(indexOfFirstItem, indexOfLastItem);
@@ -308,7 +283,6 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
   const totalConcession = admConcession + tuitionConcession;
 
   const totalStudents = students.length;
-  // Assuming Active means not "Left Student"
   const activeStudents = students.filter((s:Student) => s.status !== "Left Student").length;
   const freeStudents = students.filter((s:Student) => s.status === "Free").length;
   const paidStudents = students.filter((s:Student) => s.status === "Paid").length;
@@ -333,12 +307,10 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                   <button style={styles.button("secondary")} onClick={() => setShowPrintPreview(false)}>Close</button>
               </div>
               <div id="printable-area" style={{padding: '40px', boxSizing: 'border-box'}}>
-                  {/* Header */}
                   <div style={{textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #0f172a', paddingBottom: '15px'}}>
                       <h1 style={{margin: '0', textTransform: 'uppercase', fontSize: '1.8rem', color: '#0f172a'}}>Ghazali Institute of Medical Sciences</h1>
                       <h3 style={{margin: '10px 0 0', fontWeight: 600, textTransform: 'uppercase', padding: '5px 15px', border: '1px solid #0f172a', display: 'inline-block'}}>Student Admission Form</h3>
                   </div>
-
                   <div style={{display: 'flex', gap: '30px', marginBottom: '30px'}}>
                       <div style={{width: '150px', height: '180px', border: '1px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                           {formData.photo ? <img src={formData.photo} style={{maxWidth: '100%', maxHeight: '100%'}} /> : "Student Photo"}
@@ -346,92 +318,35 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                       <div style={{flex: 1}}>
                           <table style={{width: '100%', borderCollapse: 'collapse'}}>
                               <tbody>
-                                  <tr>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Admission No:</td>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold', fontSize: '1.1rem'}}>{formData.admissionNo}</td>
-                                  </tr>
-                                  <tr>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Student Name:</td>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', textTransform: 'uppercase'}}>{formData.name}</td>
-                                  </tr>
-                                  <tr>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Father Name:</td>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', textTransform: 'uppercase'}}>{formData.fatherName}</td>
-                                  </tr>
-                                  <tr>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>CNIC:</td>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.cnic}</td>
-                                  </tr>
-                                  <tr>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Date of Birth:</td>
-                                      <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.dob}</td>
-                                  </tr>
+                                  <tr><td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Admission No:</td><td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold', fontSize: '1.1rem'}}>{formData.admissionNo}</td></tr>
+                                  <tr><td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Student Name:</td><td style={{padding: '8px', borderBottom: '1px solid #eee', textTransform: 'uppercase'}}>{formData.name}</td></tr>
+                                  <tr><td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Father Name:</td><td style={{padding: '8px', borderBottom: '1px solid #eee', textTransform: 'uppercase'}}>{formData.fatherName}</td></tr>
+                                  <tr><td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>CNIC:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.cnic}</td></tr>
+                                  <tr><td style={{padding: '8px', borderBottom: '1px solid #eee', fontWeight: 'bold'}}>Date of Birth:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.dob}</td></tr>
                               </tbody>
                           </table>
                       </div>
                   </div>
-
                   <h4 style={{background: '#eee', padding: '8px', borderLeft: '4px solid #000', textTransform: 'uppercase'}}>Academic & Contact Details</h4>
                   <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '30px'}}>
                       <tbody>
-                          <tr>
-                              <td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Program:</td>
-                              <td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.program}</td>
-                              <td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Semester:</td>
-                              <td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.semester}</td>
-                          </tr>
-                          <tr>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Board:</td>
-                              <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.board}</td>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Campus:</td>
-                              <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.campus}</td>
-                          </tr>
-                          <tr>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Phone:</td>
-                              <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.phone}</td>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>District:</td>
-                              <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.district}</td>
-                          </tr>
-                          <tr>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Address:</td>
-                              <td colSpan={3} style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.address}</td>
-                          </tr>
+                          <tr><td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Program:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.program}</td><td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Semester:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.semester}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Board:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.board}</td><td style={{padding: '8px', fontWeight: 'bold'}}>Campus:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.campus}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Phone:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.phone}</td><td style={{padding: '8px', fontWeight: 'bold'}}>District:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.district}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Address:</td><td colSpan={3} style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.address}</td></tr>
                       </tbody>
                   </table>
-
                   <h4 style={{background: '#eee', padding: '8px', borderLeft: '4px solid #000', textTransform: 'uppercase'}}>Fee Structure</h4>
                   <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '30px'}}>
                       <tbody>
-                          <tr>
-                              <td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Admission Fee:</td>
-                              <td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.admissionFee.toLocaleString()}</td>
-                              <td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Semester Fee:</td>
-                              <td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.tuitionFee.toLocaleString()}</td>
-                          </tr>
-                          <tr>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Misc Charges:</td>
-                              <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.miscCharges.toLocaleString()}</td>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Affiliation Fee:</td>
-                              <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.affiliationFee.toLocaleString()}</td>
-                          </tr>
-                          <tr>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Total Course Fee:</td>
-                              <td style={{padding: '8px', fontWeight: 'bold', fontSize: '1.1rem'}}>{formData.totalCourseFee.toLocaleString()}</td>
-                              <td style={{padding: '8px', fontWeight: 'bold'}}>Status:</td>
-                              <td style={{padding: '8px'}}>{formData.status}</td>
-                          </tr>
+                          <tr><td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Admission Fee:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.admissionFee.toLocaleString()}</td><td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Semester Fee:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.tuitionFee.toLocaleString()}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Misc Charges:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.miscCharges.toLocaleString()}</td><td style={{padding: '8px', fontWeight: 'bold'}}>Affiliation Fee:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.affiliationFee.toLocaleString()}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Total Course Fee:</td><td style={{padding: '8px', fontWeight: 'bold', fontSize: '1.1rem'}}>{formData.totalCourseFee.toLocaleString()}</td><td style={{padding: '8px', fontWeight: 'bold'}}>Status:</td><td style={{padding: '8px'}}>{formData.status}</td></tr>
                       </tbody>
                   </table>
-
                   <div style={{marginTop: '60px', display: 'flex', justifyContent: 'space-between'}}>
-                      <div style={{textAlign: 'center', width: '200px'}}>
-                          <div style={{borderBottom: '1px solid #000', marginBottom: '5px', height: '1px'}}></div>
-                          <div>Student Signature</div>
-                      </div>
-                      <div style={{textAlign: 'center', width: '200px'}}>
-                          <div style={{borderBottom: '1px solid #000', marginBottom: '5px', height: '1px'}}></div>
-                          <div>Principal Signature</div>
-                      </div>
+                      <div style={{textAlign: 'center', width: '200px'}}><div style={{borderBottom: '1px solid #000', marginBottom: '5px', height: '1px'}}></div><div>Student Signature</div></div>
+                      <div style={{textAlign: 'center', width: '200px'}}><div style={{borderBottom: '1px solid #000', marginBottom: '5px', height: '1px'}}></div><div>Principal Signature</div></div>
                   </div>
               </div>
           </div>
@@ -441,7 +356,6 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
   return (
     <div>
       {showPrintPreview && <BiodataPrintPreview />}
-      
       <h2 style={{marginBottom: '5px'}}>Student Biodata</h2>
       <p style={{color: '#64748b', marginBottom: '24px'}}>Manage student registrations and details</p>
       
@@ -449,115 +363,62 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
         <>
             <div style={{display: 'flex', gap: '20px', marginBottom: '25px'}}>
                <div style={{...hoverCardStyle, borderBottom: '4px solid #3b82f6'}}>
-                   <div>
-                       <div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>Total Students</div>
-                       <div style={{fontSize: '2rem', fontWeight: 800, color: '#1e3a8a'}}>{totalStudents}</div>
-                   </div>
-                   <div style={{padding: '10px', background: '#eff6ff', borderRadius: '50%', color: '#3b82f6'}}>
-                       <span className="material-symbols-outlined">group</span>
-                   </div>
+                   <div><div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>Total Students</div><div style={{fontSize: '2rem', fontWeight: 800, color: '#1e3a8a'}}>{totalStudents}</div></div>
+                   <div style={{padding: '10px', background: '#eff6ff', borderRadius: '50%', color: '#3b82f6'}}><span className="material-symbols-outlined">group</span></div>
                </div>
                <div style={{...hoverCardStyle, borderBottom: '4px solid #10b981'}}>
-                   <div>
-                       <div style={{fontSize: '0.9rem', color: '#000', fontWeight: 600}}>Active Students</div>
-                       <div style={{fontSize: '2rem', fontWeight: 800, color: '#065f46'}}>{activeStudents}</div>
-                   </div>
-                   <div style={{padding: '10px', background: '#ecfdf5', borderRadius: '50%', color: '#10b981'}}>
-                       <span className="material-symbols-outlined">how_to_reg</span>
-                   </div>
+                   <div><div style={{fontSize: '0.9rem', color: '#000', fontWeight: 600}}>Active Students</div><div style={{fontSize: '2rem', fontWeight: 800, color: '#065f46'}}>{activeStudents}</div></div>
+                   <div style={{padding: '10px', background: '#ecfdf5', borderRadius: '50%', color: '#10b981'}}><span className="material-symbols-outlined">how_to_reg</span></div>
                </div>
                <div style={{...hoverCardStyle, borderBottom: '4px solid #f59e0b'}}>
-                   <div>
-                       <div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>Free Students</div>
-                       <div style={{fontSize: '2rem', fontWeight: 800, color: '#78350f'}}>{freeStudents}</div>
-                   </div>
-                   <div style={{padding: '10px', background: '#fffbeb', borderRadius: '50%', color: '#f59e0b'}}>
-                       <span className="material-symbols-outlined">money_off</span>
-                   </div>
+                   <div><div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>Free Students</div><div style={{fontSize: '2rem', fontWeight: 800, color: '#78350f'}}>{freeStudents}</div></div>
+                   <div style={{padding: '10px', background: '#fffbeb', borderRadius: '50%', color: '#f59e0b'}}><span className="material-symbols-outlined">money_off</span></div>
                </div>
                <div style={{...hoverCardStyle, borderBottom: '4px solid #8b5cf6'}}>
-                   <div>
-                       <div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>Paid Students</div>
-                       <div style={{fontSize: '2rem', fontWeight: 800, color: '#5b21b6'}}>{paidStudents}</div>
-                   </div>
-                   <div style={{padding: '10px', background: '#f5f3ff', borderRadius: '50%', color: '#8b5cf6'}}>
-                       <span className="material-symbols-outlined">paid</span>
-                   </div>
+                   <div><div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>Paid Students</div><div style={{fontSize: '2rem', fontWeight: 800, color: '#5b21b6'}}>{paidStudents}</div></div>
+                   <div style={{padding: '10px', background: '#f5f3ff', borderRadius: '50%', color: '#8b5cf6'}}><span className="material-symbols-outlined">paid</span></div>
                </div>
             </div>
 
             <div style={styles.card}>
-            <div style={{display: 'flex', gap: '15px', marginBottom: '20px'}}>
-                <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Name" value={searchName} onChange={e => setSearchName(e.target.value)} /></div>
-                <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Father Name" value={searchFather} onChange={e => setSearchFather(e.target.value)} /></div>
-                <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Adm No" value={searchAdm} onChange={e => setSearchAdm(e.target.value)} /></div>
-                <button style={styles.button("primary")} onClick={() => { 
-                    setFormData({ admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", balance: 0, address: "", district: "Peshawar", phone: "", cnic: "", board: "", remarks: "", photo: "", admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0, dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10), recordedBy: currentUser || "Admin" });
-                    setEditMode(false);
-                    setErrors({});
-                    setView("form"); 
-                }}>+ Add New Student</button>
-            </div>
-            
-            <table style={styles.table}>
-                <thead>
-                    <tr>
-                        <th style={styles.th}>Adm No</th>
-                        <th style={styles.th}>Name</th>
-                        <th style={styles.th}>Father Name</th>
-                        <th style={styles.th}>Program</th>
-                        <th style={styles.th}>Sem</th>
-                        <th style={styles.th}>Phone</th>
-                        <th style={styles.th}>Recorded By</th>
-                        <th style={styles.th}>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentItems.map((s: Student) => (
-                        <tr key={s.admissionNo}>
-                        <td style={styles.td}>{s.admissionNo}</td>
-                        <td style={styles.td}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                {s.photo && <img src={s.photo} style={{width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover'}} />}
-                                {s.name}
-                            </div>
-                        </td>
-                        <td style={styles.td}>{s.fatherName}</td>
-                        <td style={styles.td}>{s.program}</td>
-                        <td style={styles.td}>{s.semester}</td>
-                        <td style={styles.td}>{s.phone}</td>
-                        <td style={styles.td}><span style={{fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic'}}>{s.recordedBy || '-'}</span></td>
-                        <td style={styles.td}>
-                            <div style={{display: 'flex', gap: '8px'}}>
-                                <button onClick={() => handleEdit(s)} style={{border: 'none', background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'}}>View/Edit</button>
-                            </div>
-                        </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            
-            {/* Pagination Controls */}
-            <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <div style={{fontSize: '0.9rem', color: '#64748b'}}>Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredStudents.length)} of {filteredStudents.length}</div>
-                <div style={{display: 'flex', gap: '5px'}}>
-                    <button 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                        disabled={currentPage === 1}
-                        style={{padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: currentPage === 1 ? '#f1f5f9' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer'}}
-                    >
-                        Prev
-                    </button>
-                    <div style={{padding: '8px 12px', background: '#e2e8f0', borderRadius: '6px'}}>{currentPage} / {totalPages}</div>
-                    <button 
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                        disabled={currentPage === totalPages}
-                        style={{padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: currentPage === totalPages ? '#f1f5f9' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'}}
-                    >
-                        Next
-                    </button>
+                <div style={{display: 'flex', gap: '15px', marginBottom: '20px'}}>
+                    <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Name" value={searchName} onChange={e => setSearchName(e.target.value)} /></div>
+                    <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Father Name" value={searchFather} onChange={e => setSearchFather(e.target.value)} /></div>
+                    <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Adm No" value={searchAdm} onChange={e => setSearchAdm(e.target.value)} /></div>
+                    <button style={styles.button("primary")} onClick={() => { 
+                        setFormData({ admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", balance: 0, address: "", district: "Peshawar", phone: "", cnic: "", board: "", remarks: "", photo: "", admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0, dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10), recordedBy: currentUser || "Admin" });
+                        setEditMode(false); setErrors({}); setView("form"); 
+                    }}>+ Add New Student</button>
                 </div>
-            </div>
+                
+                <table style={styles.table}>
+                    <thead>
+                        <tr><th style={styles.th}>Adm No</th><th style={styles.th}>Name</th><th style={styles.th}>Father Name</th><th style={styles.th}>Program</th><th style={styles.th}>Sem</th><th style={styles.th}>Phone</th><th style={styles.th}>Recorded By</th><th style={styles.th}>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {currentItems.map((s: Student) => (
+                            <tr key={s.admissionNo}>
+                            <td style={styles.td}>{s.admissionNo}</td>
+                            <td style={styles.td}><div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>{s.photo && <img src={s.photo} style={{width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover'}} />}{s.name}</div></td>
+                            <td style={styles.td}>{s.fatherName}</td>
+                            <td style={styles.td}>{s.program}</td>
+                            <td style={styles.td}>{s.semester}</td>
+                            <td style={styles.td}>{s.phone}</td>
+                            <td style={styles.td}><span style={{fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic'}}>{s.recordedBy || '-'}</span></td>
+                            <td style={styles.td}><button onClick={() => handleEdit(s)} style={{border: 'none', background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'}}>View/Edit</button></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                
+                <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div style={{fontSize: '0.9rem', color: '#64748b'}}>Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredStudents.length)} of {filteredStudents.length}</div>
+                    <div style={{display: 'flex', gap: '5px'}}>
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: currentPage === 1 ? '#f1f5f9' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer'}}>Prev</button>
+                        <div style={{padding: '8px 12px', background: '#e2e8f0', borderRadius: '6px'}}>{currentPage} / {totalPages}</div>
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: currentPage === totalPages ? '#f1f5f9' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'}}>Next</button>
+                    </div>
+                </div>
             </div>
         </>
       ) : (
@@ -590,12 +451,11 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                     </div>
                     <div>
                         <label style={styles.label}>Program *</label>
-                        <select style={getInputStyle('program')} value={formData.program} onChange={e => {setFormData({...formData, program: e.target.value, semester: ""}); setErrors({...errors, program: false});}}>
+                        <select style={getInputStyle('program')} value={formData.program} onChange={e => {setFormData({...formData, program: e.target.value}); setErrors({...errors, program: false});}}>
                            <option value="">Select Program</option>
                            {availablePrograms.map((p: string) => <option key={p}>{p}</option>)}
                         </select>
                     </div>
-                    
                     <div>
                         <label style={styles.label}>Semester/Year *</label>
                         <select style={getInputStyle('semester')} value={formData.semester} onChange={e => {setFormData({...formData, semester: e.target.value}); setErrors({...errors, semester: false});}}>
@@ -609,150 +469,74 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                              {availableCampuses.map((c: Campus) => <option key={c.name} value={c.name}>{c.name}</option>)}
                         </select>
                     </div>
-                    
                     <div>
-                        <label style={styles.label}>Phone No (####-#######) *</label>
+                        <label style={styles.label}>Phone No *</label>
                         <input style={getInputStyle('phone')} value={formData.phone} onChange={e => {setFormData({...formData, phone: formatPhone(e.target.value)}); setErrors({...errors, phone: false});}} placeholder="03XX-XXXXXXX" />
                     </div>
-
                     <div>
-                        <label style={styles.label}>CNIC (#####-#######-#) *</label>
+                        <label style={styles.label}>CNIC *</label>
                         <input style={getInputStyle('cnic')} value={formData.cnic || ''} onChange={e => {setFormData({...formData, cnic: formatCNIC(e.target.value)}); setErrors({...errors, cnic: false});}} placeholder="12345-1234567-1" />
                     </div>
-                    
-                    {/* District Dropdown */}
                     <div>
-                        <label style={styles.label}>District (KPK) *</label>
+                        <label style={styles.label}>District *</label>
                         <select style={getInputStyle('district')} value={formData.district || ""} onChange={e => {setFormData({...formData, district: e.target.value}); setErrors({...errors, district: false});}}>
                            <option value="">Select District</option>
                            {KPK_DISTRICTS.map((d) => <option key={d}>{d}</option>)}
                         </select>
                     </div>
-
-                    {/* Address with Suggestion */}
                     <div style={{position: 'relative'}}>
                         <label style={styles.label}>Address *</label>
-                        <input 
-                            style={getInputStyle('address')}
-                            value={formData.address} 
-                            onChange={e => handleAddressChange(e.target.value)} 
-                            placeholder="Type address..."
-                            onFocus={() => { if(formData.address) handleAddressChange(formData.address) }}
-                        />
+                        <input style={getInputStyle('address')} value={formData.address} onChange={e => handleAddressChange(e.target.value)} placeholder="Type address..." onFocus={() => { if(formData.address) handleAddressChange(formData.address) }} />
                         {showSuggestions && addressSuggestions.length > 0 && (
                             <ul style={{position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', listStyle: 'none', padding: 0, margin: 0, boxShadow: '0 4px 6px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto'}}>
-                                {addressSuggestions.map((addr, idx) => (
-                                    <li 
-                                        key={addr} 
-                                        onClick={() => selectAddress(addr)}
-                                        style={{padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: '0.85rem', color: '#0f172a'}}
-                                    >
-                                        {/* Highlight correction if it differs slightly from input */}
-                                        {addr} {idx === 0 && addr.toLowerCase() !== formData.address.toLowerCase() && <span style={{fontSize: '0.7rem', color: '#166534', fontWeight: 600, marginLeft: '5px'}}>(Suggestion)</span>}
-                                    </li>
-                                ))}
+                                {addressSuggestions.map((addr, idx) => (<li key={addr} onClick={() => selectAddress(addr)} style={{padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: '0.85rem', color: '#0f172a'}}>{addr} {idx === 0 && addr.toLowerCase() !== formData.address.toLowerCase() && <span style={{fontSize: '0.7rem', color: '#166534', fontWeight: 600, marginLeft: '5px'}}>(Suggestion)</span>}</li>))}
                             </ul>
                         )}
                     </div>
-
                     <div><label style={styles.label}>Date of Birth *</label><input type="date" style={getInputStyle('dob')} value={formData.dob} onChange={e => {setFormData({...formData, dob: e.target.value}); setErrors({...errors, dob: false});}} /></div>
                     <div>
                         <label style={styles.label}>Gender *</label>
-                        <select style={getInputStyle('gender')} value={formData.gender} onChange={e => {setFormData({...formData, gender: e.target.value}); setErrors({...errors, gender: false});}}>
-                           <option>Male</option><option>Female</option>
-                        </select>
+                        <select style={getInputStyle('gender')} value={formData.gender} onChange={e => {setFormData({...formData, gender: e.target.value}); setErrors({...errors, gender: false});}}><option>Male</option><option>Female</option></select>
                     </div>
                     <div>
                         <label style={styles.label}>Nationality *</label>
-                        <select style={getInputStyle('nationality')} value={formData.nationality} onChange={e => {setFormData({...formData, nationality: e.target.value}); setErrors({...errors, nationality: false});}}>
-                           <option>Pakistani</option><option>Afghan</option><option>Other</option>
-                        </select>
+                        <select style={getInputStyle('nationality')} value={formData.nationality} onChange={e => {setFormData({...formData, nationality: e.target.value}); setErrors({...errors, nationality: false});}}><option>Pakistani</option><option>Afghan</option><option>Other</option></select>
                     </div>
                     <div>
                         <label style={styles.label}>Status *</label>
-                        <select style={getInputStyle('status')} value={formData.status} onChange={e => {setFormData({...formData, status: e.target.value}); setErrors({...errors, status: false});}}>
-                           <option>Free</option><option>Paid</option><option>Course Completed</option><option>Left Student</option>
-                        </select>
+                        <select style={getInputStyle('status')} value={formData.status} onChange={e => {setFormData({...formData, status: e.target.value}); setErrors({...errors, status: false});}}><option>Free</option><option>Paid</option><option>Course Completed</option><option>Left Student</option></select>
                     </div>
                     <div><label style={styles.label}>Admission Date</label><input type="date" style={{...styles.input, backgroundColor: '#f1f5f9'}} value={formData.admissionDate} readOnly /></div>
-                    <div>
-                       <label style={styles.label}>Recorded By</label>
-                       <input style={{...styles.input, backgroundColor: '#f1f5f9'}} value={formData.recordedBy} readOnly />
-                    </div>
+                    <div><label style={styles.label}>Recorded By</label><input style={{...styles.input, backgroundColor: '#f1f5f9'}} value={formData.recordedBy} readOnly /></div>
                  </div>
               </div>
            </div>
            
            <h4 style={{color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '15px'}}>Fee Structure & Calculations</h4>
-           
            <div style={{display: 'flex', gap: '20px'}}>
-               {/* Static Fee Card */}
                <div style={{flex: 1, backgroundColor: '#f0f9ff', padding: '15px', borderRadius: '8px', border: '1px solid #bae6fd'}}>
                    <h5 style={{margin: '0 0 10px 0', color: '#0369a1'}}>Static Fee (Standard)</h5>
-                   {staticFee ? (
-                       <div style={{fontSize: '0.85rem'}}>
-                           <div style={{marginBottom: '5px'}}>Admission: <strong>{staticFee.admission.toLocaleString()}</strong></div>
-                           <div style={{marginBottom: '5px'}}>Semester: <strong>{staticFee.tuition.toLocaleString()}</strong></div>
-                           {staticFee.misc && <div style={{marginBottom: '5px'}}>Misc: <strong>{staticFee.misc.toLocaleString()}</strong></div>}
-                           {staticFee.affiliation && <div>Affiliation: <strong>{staticFee.affiliation.toLocaleString()}</strong></div>}
-                       </div>
-                   ) : (
-                       <div style={{color: '#64748b', fontSize: '0.85rem'}}>No static fee defined for this program</div>
-                   )}
+                   {staticFee ? (<div style={{fontSize: '0.85rem'}}><div style={{marginBottom: '5px'}}>Admission: <strong>{staticFee.admission.toLocaleString()}</strong></div><div style={{marginBottom: '5px'}}>Semester: <strong>{staticFee.tuition.toLocaleString()}</strong></div>{staticFee.misc && <div style={{marginBottom: '5px'}}>Misc: <strong>{staticFee.misc.toLocaleString()}</strong></div>}{staticFee.affiliation && <div>Affiliation: <strong>{staticFee.affiliation.toLocaleString()}</strong></div>}</div>) : (<div style={{color: '#64748b', fontSize: '0.85rem'}}>No static fee defined for this program</div>)}
                </div>
-               
-               {/* Concession Card */}
                <div style={{flex: 1, backgroundColor: '#f0fdf4', padding: '15px', borderRadius: '8px', border: '1px solid #bbf7d0'}}>
                    <h5 style={{margin: '0 0 10px 0', color: '#000'}}>Total Concession</h5>
-                   <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#000'}}>
-                       Rs {totalConcession.toLocaleString()}
-                   </div>
-                   <div style={{fontSize: '0.75rem', color: '#000', marginTop: '5px'}}>
-                       (Difference between Static & Entered)
-                   </div>
+                   <div style={{fontSize: '1.5rem', fontWeight: 700, color: '#000'}}>Rs {totalConcession.toLocaleString()}</div>
                </div>
            </div>
 
            <div style={{...styles.grid3, marginTop: '20px', marginBottom: '20px'}}>
-              <div>
-                  <label style={styles.label}>Admission Fee (One Time)</label>
-                  <input type="number" style={styles.input} value={formData.admissionFee} onChange={e => setFormData({...formData, admissionFee: Number(e.target.value)})} />
-                  {admConcession > 0 && <div style={{fontSize: '0.75rem', color: '#166534', marginTop: '2px'}}>Concession: {admConcession.toLocaleString()}</div>}
-              </div>
-              <div>
-                  <label style={styles.label}>Semester Fee</label>
-                  <input type="number" style={styles.input} value={formData.tuitionFee} onChange={e => setFormData({...formData, tuitionFee: Number(e.target.value)})} />
-                  {tuitionConcession > 0 && <div style={{fontSize: '0.75rem', color: '#166534', marginTop: '2px'}}>Concession: {tuitionConcession.toLocaleString()}</div>}
-              </div>
-              <div>
-                  <label style={styles.label}>Monthly Fee (Auto)</label>
-                  <input type="text" style={{...styles.input, backgroundColor: '#f1f5f9'}} value={monthlyFee.toLocaleString()} readOnly />
-                  <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>Semester Fee / 6</div>
-              </div>
+              <div><label style={styles.label}>Admission Fee</label><input type="number" style={styles.input} value={formData.admissionFee} onChange={e => setFormData({...formData, admissionFee: Number(e.target.value)})} />{admConcession > 0 && <div style={{fontSize: '0.75rem', color: '#166534', marginTop: '2px'}}>Concession: {admConcession.toLocaleString()}</div>}</div>
+              <div><label style={styles.label}>Semester Fee</label><input type="number" style={styles.input} value={formData.tuitionFee} onChange={e => setFormData({...formData, tuitionFee: Number(e.target.value)})} />{tuitionConcession > 0 && <div style={{fontSize: '0.75rem', color: '#166534', marginTop: '2px'}}>Concession: {tuitionConcession.toLocaleString()}</div>}</div>
+              <div><label style={styles.label}>Monthly Fee (Auto)</label><input type="text" style={{...styles.input, backgroundColor: '#f1f5f9'}} value={monthlyFee.toLocaleString()} readOnly /></div>
               <div><label style={styles.label}>Misc Charges</label><input type="number" style={styles.input} value={formData.miscCharges} onChange={e => setFormData({...formData, miscCharges: Number(e.target.value)})} /></div>
               <div><label style={styles.label}>Affiliation Fee</label><input type="number" style={styles.input} value={formData.affiliationFee} onChange={e => setFormData({...formData, affiliationFee: Number(e.target.value)})} /></div>
-              <div>
-                  <label style={styles.label}>Total Course Fee (Auto-Calc)</label>
-                  <input type="number" style={{...styles.input, fontWeight: 700, color: '#0f172a'}} value={formData.totalCourseFee} readOnly />
-                  <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>Specific Formula applied based on Board</div>
-              </div>
+              <div><label style={styles.label}>Total Course Fee (Auto-Calc)</label><input type="number" style={{...styles.input, fontWeight: 700, color: '#0f172a'}} value={formData.totalCourseFee} readOnly /></div>
            </div>
 
-           <div style={{marginBottom: '20px'}}>
-              <label style={styles.label}>Remarks</label>
-              <textarea style={styles.input} value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} />
-           </div>
+           <div style={{marginBottom: '20px'}}><label style={styles.label}>Remarks</label><textarea style={styles.input} value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} /></div>
 
            <div className="no-print" style={{display: 'flex', gap: '10px'}}>
-              {editMode ? (
-                 <>
-                   <button style={styles.button("primary")} onClick={handleSave}>Update Student</button>
-                   <button style={styles.button("secondary")} onClick={() => setShowPrintPreview(true)}>Print Biodata</button>
-                   <button style={styles.button("danger")} onClick={handleDelete}>Delete</button>
-                 </>
-              ) : (
-                 <button style={styles.button("primary")} onClick={handleSave}>Save Record</button>
-              )}
+              {editMode ? (<><button style={styles.button("primary")} onClick={handleSave}>Update Student</button><button style={styles.button("secondary")} onClick={() => setShowPrintPreview(true)}>Print Biodata</button><button style={styles.button("danger")} onClick={handleDelete}>Delete</button></>) : (<button style={styles.button("primary")} onClick={handleSave}>Save Record</button>)}
            </div>
         </div>
       )}

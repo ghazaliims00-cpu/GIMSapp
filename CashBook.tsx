@@ -259,8 +259,8 @@ const CashBookDrilldown = ({ type, onClose, transactions, students, dateRange, a
                  <table style={styles.table}>
                     <thead>
                        <tr>
-                          <th style={styles.th}>Date</th>
                           <th style={styles.th}>S.No</th>
+                          <th style={styles.th}>Date</th>
                           {type === 'receipts' && (
                               <>
                                 <th style={styles.th}>Receipt NO</th>
@@ -281,8 +281,8 @@ const CashBookDrilldown = ({ type, onClose, transactions, students, dateRange, a
                           const student = getStudentDetails(t.studentId);
                           return (
                              <tr key={t.id}>
-                                <td style={styles.td}>{t.date}</td>
                                 <td style={styles.td}>{idx + 1}</td>
+                                <td style={styles.td}>{t.date}</td>
                                 {type === 'receipts' && (
                                     <>
                                         <td style={styles.td}>{t.voucherNo}</td>
