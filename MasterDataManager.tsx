@@ -13,7 +13,7 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
    const [editCampus, setEditCampus] = useState<Campus | null>(null);
    const [showCampusForm, setShowCampusForm] = useState(false);
 
-   const [newUser, setNewUser] = useState({ username: "", password: "", role: "Cashier" });
+   const [newUser, setNewUser] = useState({ username: "", password: "", role: "Cashier", email: "", isTrialUser: true });
    const [editUser, setEditUser] = useState<User | null>(null);
    const [showUserForm, setShowUserForm] = useState(false);
 
@@ -106,7 +106,7 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
    const handleAddUser = () => {
       if(newUser.username && newUser.password) {
          onUpdateUsers([...users, newUser]);
-         setNewUser({ username: "", password: "", role: "Cashier" });
+         setNewUser({ username: "", password: "", role: "Cashier", email: "", isTrialUser: true });
          setShowUserForm(false);
       } else {
          alert("Username and Password are required");
@@ -114,6 +114,7 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
    }
 
    const handleDeleteUser = (username: string) => {
+      if (username === 'admin') return alert("Main admin account cannot be deleted.");
       if(window.confirm("Delete User?")) {
          onUpdateUsers(users.filter((u:User) => u.username !== username));
       }
@@ -176,19 +177,24 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
                   {showUserForm && (
                       <div style={{background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.3s'}}>
                           <h4 style={{marginTop: 0, color: '#475569'}}>Create New User</h4>
-                          <div style={{display: 'flex', gap: '15px', flexWrap: 'wrap'}}>
-                             <input style={styles.input} value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} placeholder="Username" />
-                             <input style={styles.input} value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} placeholder="Password" />
-                             <select style={styles.input} value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                          <div style={{display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center'}}>
+                             <input style={{...styles.input, width: '200px'}} value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} placeholder="Username" />
+                             <input style={{...styles.input, width: '200px'}} value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} placeholder="Password" />
+                             <input style={{...styles.input, width: '250px'}} value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} placeholder="Email Address" />
+                             <select style={{...styles.input, width: '150px'}} value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                                 {roles.map((r:string) => <option key={r}>{r}</option>)}
                              </select>
+                             <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none'}}>
+                                <input type="checkbox" checked={newUser.isTrialUser} onChange={e => setNewUser({...newUser, isTrialUser: e.target.checked})} />
+                                Trial User (7 Days Limit)
+                             </label>
                              <button style={styles.button("primary")} onClick={handleAddUser}>Create</button>
                              <button style={{...styles.button("secondary"), background: 'white'}} onClick={() => setShowUserForm(false)}>Cancel</button>
                           </div>
                       </div>
                   )}
 
-                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px'}}>
+                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px'}}>
                      {users.map((u: User) => (
                         <div key={u.username} style={{padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'}}>
                            <div style={{width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
@@ -197,8 +203,15 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
                            <div style={{flex: 1}}>
                                {editUser?.username === u.username ? (
                                    <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
-                                       <input style={{...styles.input, padding: '5px'}} value={editUser.password} onChange={e => setEditUser({...editUser, password: e.target.value})} />
+                                       <input style={{...styles.input, padding: '5px'}} value={editUser.password} onChange={e => setEditUser({...editUser, password: e.target.value})} placeholder="Password" />
+                                       <input style={{...styles.input, padding: '5px'}} value={editUser.email} onChange={e => setEditUser({...editUser, email: e.target.value})} placeholder="Email" />
                                        <select style={{...styles.input, padding: '5px'}} value={editUser.role} onChange={e => setEditUser({...editUser, role: e.target.value})}>{roles.map((r:string) => <option key={r}>{r}</option>)}</select> 
+                                       {editUser.username !== 'admin' && (
+                                           <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginTop: '5px'}}>
+                                              <input type="checkbox" checked={editUser.isTrialUser} onChange={e => setEditUser({...editUser, isTrialUser: e.target.checked})} />
+                                              Trial Mode
+                                           </label>
+                                       )}
                                        <div style={{display: 'flex', gap: '5px', marginTop: '5px'}}>
                                            <button onClick={handleEditUser} style={{background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer'}}>Save</button>
                                            <button onClick={() => setEditUser(null)} style={{background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer'}}>Cancel</button>
@@ -206,16 +219,21 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
                                    </div>
                                ) : (
                                    <>
-                                       <div style={{fontWeight: 700, color: '#0f172a'}}>{u.username}</div>
+                                       <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                          <div style={{fontWeight: 700, color: '#0f172a'}}>{u.username}</div>
+                                          {u.isTrialUser && <span style={{fontSize: '0.65rem', background: '#fff7ed', color: '#c2410c', padding: '2px 6px', borderRadius: '4px', fontWeight: 600}}>TRIAL</span>}
+                                       </div>
                                        <div style={{fontSize: '0.85rem', color: '#64748b'}}>{u.role}</div>
-                                       <div style={{fontSize: '0.8rem', color: '#94a3b8'}}>Password: ••••••••</div>
+                                       <div style={{fontSize: '0.8rem', color: '#94a3b8'}}>{u.email || 'No email provided'}</div>
                                    </>
                                )}
                            </div>
                            {editUser?.username !== u.username && (
                                <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
                                    <button onClick={() => setEditUser(u)} style={{border: 'none', background: '#f1f5f9', color: '#475569', borderRadius: '6px', padding: '6px', cursor: 'pointer'}}><span className="material-symbols-outlined" style={{fontSize: '18px'}}>edit</span></button>
-                                   <button onClick={() => handleDeleteUser(u.username)} style={{border: 'none', background: '#fee2e2', color: '#ef4444', borderRadius: '6px', padding: '6px', cursor: 'pointer'}}><span className="material-symbols-outlined" style={{fontSize: '18px'}}>delete</span></button>
+                                   {u.username !== 'admin' && (
+                                       <button onClick={() => handleDeleteUser(u.username)} style={{border: 'none', background: '#fee2e2', color: '#ef4444', borderRadius: '6px', padding: '6px', cursor: 'pointer'}}><span className="material-symbols-outlined" style={{fontSize: '18px'}}>delete</span></button>
+                                   )}
                                </div>
                            )}
                         </div>

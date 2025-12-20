@@ -2,45 +2,48 @@
 import React, { useState, useEffect, useRef } from "react";
 import { styles } from "./styles";
 import { Student } from "./types";
+import { SearchableSelect } from "./SearchableSelect";
 
 export const FaceRecognitionScanner = ({ students, userRole }: { students: Student[], userRole: string }) => {
     const [isScanning, setIsScanning] = useState(false);
+    const [mode, setMode] = useState<'security' | 'registration'>('security');
     const [detectedStudent, setDetectedStudent] = useState<Student | null>(null);
     const [status, setStatus] = useState<'neutral' | 'success' | 'danger'>('neutral');
     const [permissionError, setPermissionError] = useState("");
+    
+    // Registration Specific State
+    const [regStudentId, setRegStudentId] = useState("");
+    const [regStep, setRegStep] = useState(0); // 0: Front, 1: Left, 2: Right, 3: Up, 4: Down
+    const [isCapturing, setIsCapturing] = useState(false);
+    const [capturedAngles, setCapturedAngles] = useState<boolean[]>([false, false, false, false, false]);
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const intervalRef = useRef<any>(null);
 
-    // Filter potential targets (just for the demo simulation)
     const activeStudents = students.filter(s => s.status !== "Left Student");
+    const studentOptions = activeStudents.map(s => ({ value: s.admissionNo, label: `${s.name} (${s.admissionNo})` }));
+
+    const REG_STEPS = [
+        { label: "Front Face", icon: "face", desc: "Look straight into the camera" },
+        { label: "Turn Left", icon: "arrow_back", desc: "Show your left profile" },
+        { label: "Turn Right", icon: "arrow_forward", desc: "Show your right profile" },
+        { label: "Look Up", icon: "arrow_upward", desc: "Tilt your head upwards" },
+        { label: "Look Down", icon: "arrow_downward", desc: "Tilt your head downwards" }
+    ];
 
     const startCamera = async () => {
         try {
             setPermissionError("");
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            
-            // Check if component is still mounted (ref exists)
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 streamRef.current = stream;
                 setIsScanning(true);
-                startSimulation();
-            } else {
-                // If unmounted during request, clean up immediately
-                stream.getTracks().forEach(track => track.stop());
+                if (mode === 'security') startDetectionSimulation();
             }
         } catch (err: any) {
-            console.error("Camera Error:", err);
-            let msg = "Camera access denied or unavailable.";
-            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                msg = "Permission denied. Please allow camera access in your browser settings.";
-            } else if (err.name === 'NotFoundError') {
-                msg = "No camera device found.";
-            } else if (err.name === 'NotReadableError') {
-                msg = "Camera is currently in use by another application.";
-            }
-            setPermissionError(msg);
+            setPermissionError("Camera access denied. Please allow camera permissions in your browser.");
             setIsScanning(false);
         }
     };
@@ -50,49 +53,50 @@ export const FaceRecognitionScanner = ({ students, userRole }: { students: Stude
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
+        if (intervalRef.current) clearInterval(intervalRef.current);
         setIsScanning(false);
         setDetectedStudent(null);
         setStatus('neutral');
     };
 
-    // Simulation of AI Detection logic
-    // In a real app, this would use face-api.js or a backend API
-    const startSimulation = () => {
+    const startDetectionSimulation = () => {
         if (intervalRef.current) clearInterval(intervalRef.current);
-
         intervalRef.current = setInterval(() => {
-            // Randomly "Detect" a student every 4 seconds for demonstration
-            if (Math.random() > 0.3) { 
+            if (Math.random() > 0.6) { 
                 const randomStudent = activeStudents[Math.floor(Math.random() * activeStudents.length)];
                 setDetectedStudent(randomStudent);
-                
-                // Defaulter Logic
-                if (randomStudent.balance > 0) {
-                    setStatus('danger');
-                    // Play alert sound logic here if needed
-                } else {
-                    setStatus('success');
-                }
-
-                // Reset after 3 seconds
+                setStatus(randomStudent.balance > 0 ? 'danger' : 'success');
                 setTimeout(() => {
                     setDetectedStudent(null);
                     setStatus('neutral');
-                }, 3000);
+                }, 4000);
             }
-        }, 5000);
+        }, 8000);
+    };
+
+    const handleCaptureAngle = () => {
+        if (!regStudentId) return alert("Please select a student from the list first");
+        setIsCapturing(true);
+        // Simulate biometric data processing
+        setTimeout(() => {
+            const updated = [...capturedAngles];
+            updated[regStep] = true;
+            setCapturedAngles(updated);
+            setIsCapturing(false);
+            if (regStep < 4) setRegStep(regStep + 1);
+        }, 1200);
+    };
+
+    const handleSaveEnrollment = () => {
+        alert(`Biometric Profile Saved! Face data for ${regStudentId} has been successfully registered from all 5 angles.`);
+        setRegStep(0);
+        setCapturedAngles([false, false, false, false, false]);
+        setRegStudentId("");
+        setMode('security');
     };
 
     useEffect(() => {
-        return () => {
-            stopCamera();
-        };
+        return () => stopCamera();
     }, []);
 
     const toggleSystem = () => {
@@ -104,8 +108,8 @@ export const FaceRecognitionScanner = ({ students, userRole }: { students: Stude
         return (
             <div style={{...styles.card, textAlign: 'center', padding: '50px'}}>
                 <span className="material-symbols-outlined" style={{fontSize: '64px', color: '#cbd5e1'}}>lock</span>
-                <h3 style={{color: '#94a3b8'}}>Access Denied</h3>
-                <p>Only Admins and Managers can access the Security Scanner.</p>
+                <h3 style={{color: '#94a3b8'}}>Security Restricted</h3>
+                <p>Only administrative roles can access the Face Scanner.</p>
             </div>
         );
     }
@@ -115,18 +119,24 @@ export const FaceRecognitionScanner = ({ students, userRole }: { students: Stude
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
                 <div>
                     <h2 style={{margin: '0 0 5px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                        <span className="material-symbols-outlined" style={{color: '#0ea5e9'}}>face</span> 
-                        Face Recognition System
+                        <span className="material-symbols-outlined" style={{color: '#4f46e5'}}>face</span> 
+                        {mode === 'security' ? 'Security Scanner' : 'Add New Face Biometric'}
                     </h2>
-                    <p style={{margin: 0, color: '#64748b'}}>Real-time Defaulter Detection Scanner</p>
+                    <p style={{margin: 0, color: '#64748b'}}>{mode === 'security' ? 'Monitoring campus entry points' : 'Enrollment process: Show face from all sides'}</p>
                 </div>
-                <div>
+                <div style={{display: 'flex', gap: '10px'}}>
+                    {!isScanning && (
+                        <button 
+                            onClick={() => setMode(mode === 'security' ? 'registration' : 'security')}
+                            style={{...styles.button("secondary"), background: 'white'}}
+                        >
+                            <span className="material-symbols-outlined">{mode === 'security' ? 'person_add' : 'security'}</span>
+                            {mode === 'security' ? 'Add New Student' : 'Back to Scanner'}
+                        </button>
+                    )}
                     <button 
                         onClick={toggleSystem}
-                        style={{
-                            ...styles.button(isScanning ? "danger" : "primary"),
-                            padding: '12px 24px', fontSize: '1rem'
-                        }}
+                        style={{...styles.button(isScanning ? "danger" : "primary"), padding: '10px 25px'}}
                     >
                         <span className="material-symbols-outlined">{isScanning ? "videocam_off" : "videocam"}</span>
                         {isScanning ? "Stop System" : "Activate System"}
@@ -134,106 +144,117 @@ export const FaceRecognitionScanner = ({ students, userRole }: { students: Stude
                 </div>
             </div>
 
+            {permissionError && (
+                <div style={{padding: '10px', background: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '20px', fontSize: '0.85rem'}}>
+                    {permissionError}
+                </div>
+            )}
+
             <div style={{display: 'flex', gap: '20px'}}>
-                {/* Camera Feed */}
+                {/* Camera Viewport */}
                 <div style={{flex: 2}}>
                     <div style={styles.scannerContainer}>
                         {isScanning ? (
-                            <video 
-                                ref={videoRef} 
-                                autoPlay 
-                                playsInline 
-                                muted 
-                                style={{width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)'}} 
-                            />
-                        ) : (
-                            <div style={{color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                                <span className="material-symbols-outlined" style={{fontSize: '64px', marginBottom: '10px'}}>visibility_off</span>
-                                <div>System is Offline</div>
-                            </div>
-                        )}
-                        
-                        {/* Overlay Box */}
-                        {isScanning && (
-                            <div style={styles.scannerOverlay(status)}>
-                                {/* Corner Markers */}
-                                <div style={{position: 'absolute', top: 0, left: 0, width: '20px', height: '20px', borderTop: '4px solid white', borderLeft: '4px solid white'}}></div>
-                                <div style={{position: 'absolute', top: 0, right: 0, width: '20px', height: '20px', borderTop: '4px solid white', borderRight: '4px solid white'}}></div>
-                                <div style={{position: 'absolute', bottom: 0, left: 0, width: '20px', height: '20px', borderBottom: '4px solid white', borderLeft: '4px solid white'}}></div>
-                                <div style={{position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px', borderBottom: '4px solid white', borderRight: '4px solid white'}}></div>
-                                
-                                {/* Status Text */}
-                                <div style={{
-                                    position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-                                    backgroundColor: status === 'danger' ? '#ef4444' : status === 'success' ? '#22c55e' : 'rgba(0,0,0,0.6)',
-                                    color: 'white', padding: '8px 20px', borderRadius: '20px', fontWeight: 600,
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: '8px'
-                                }}>
-                                    {status === 'neutral' && <span className="material-symbols-outlined" style={{animation: 'spin 2s linear infinite', fontSize: '18px'}}>sync</span>}
-                                    {status === 'danger' && <span className="material-symbols-outlined">warning</span>}
-                                    {status === 'success' && <span className="material-symbols-outlined">check_circle</span>}
-                                    
-                                    {status === 'neutral' ? "Scanning..." : status === 'danger' ? "DEFAULTER DETECTED" : "CLEARED"}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    {permissionError && <div style={{color: '#b91c1c', marginTop: '10px', textAlign: 'center', fontWeight: 'bold'}}>{permissionError}</div>}
-                </div>
-
-                {/* Info Panel */}
-                <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                    <div style={{...styles.card, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: status === 'danger' ? '2px solid #ef4444' : status === 'success' ? '2px solid #22c55e' : '1px solid #e2e8f0', transition: 'all 0.3s'}}>
-                        {detectedStudent ? (
                             <>
-                                <div style={{
-                                    width: '150px', height: '150px', borderRadius: '50%', marginBottom: '20px', 
-                                    border: `4px solid ${status === 'danger' ? '#ef4444' : '#22c55e'}`, 
-                                    padding: '4px', overflow: 'hidden'
-                                }}>
-                                    {detectedStudent.photo ? 
-                                        <img src={detectedStudent.photo} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : 
-                                        <div style={{width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%'}}>
-                                            <span className="material-symbols-outlined" style={{fontSize: '64px', color: '#cbd5e1'}}>person</span>
-                                        </div>
-                                    }
-                                </div>
-                                <h2 style={{margin: '0 0 5px 0', color: '#0f172a'}}>{detectedStudent.name}</h2>
-                                <div style={{color: '#64748b', marginBottom: '15px'}}>{detectedStudent.admissionNo}</div>
-                                <div style={{color: '#64748b', fontSize: '0.9rem', marginBottom: '5px'}}>{detectedStudent.program} ({detectedStudent.semester})</div>
-                                
-                                <div style={{marginTop: '20px', width: '100%'}}>
-                                    <div style={{fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px'}}>Current Balance</div>
-                                    <div style={{fontSize: '2.5rem', fontWeight: 800, color: detectedStudent.balance > 0 ? '#b91c1c' : '#166534'}}>
-                                        Rs {detectedStudent.balance.toLocaleString()}
-                                    </div>
-                                    {detectedStudent.balance > 0 ? (
-                                        <div style={{color: '#b91c1c', fontWeight: 700, marginTop: '10px', padding: '10px', background: '#fef2f2', borderRadius: '8px'}}>
-                                            ⛔ ENTRY RESTRICTED
-                                        </div>
-                                    ) : (
-                                        <div style={{color: '#166534', fontWeight: 700, marginTop: '10px', padding: '10px', background: '#f0fdf4', borderRadius: '8px'}}>
-                                            ✅ ALLOW ENTRY
+                                <video 
+                                    ref={videoRef} 
+                                    autoPlay playsInline muted 
+                                    style={{width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)'}} 
+                                />
+                                <div style={styles.scannerOverlay(mode === 'registration' ? 'neutral' : status)}>
+                                    <div style={{position: 'absolute', top: 0, left: 0, width: '30px', height: '30px', borderTop: '4px solid white', borderLeft: '4px solid white'}}></div>
+                                    <div style={{position: 'absolute', top: 0, right: 0, width: '30px', height: '30px', borderTop: '4px solid white', borderRight: '4px solid white'}}></div>
+                                    <div style={{position: 'absolute', bottom: 0, left: 0, width: '30px', height: '30px', borderBottom: '4px solid white', borderLeft: '4px solid white'}}></div>
+                                    <div style={{position: 'absolute', bottom: 0, right: 0, width: '30px', height: '30px', borderBottom: '4px solid white', borderRight: '4px solid white'}}></div>
+                                    
+                                    {mode === 'registration' && (
+                                        <div style={{position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', padding: '8px 20px', borderRadius: '20px', color: 'white', fontWeight: 700}}>
+                                            ALIGN FACE WITHIN BOX
                                         </div>
                                     )}
                                 </div>
                             </>
                         ) : (
-                            <div style={{color: '#94a3b8'}}>
-                                <span className="material-symbols-outlined" style={{fontSize: '48px', marginBottom: '10px'}}>face_retouching_off</span>
-                                <p>Waiting for detection...</p>
+                            <div style={{color: '#64748b', textAlign: 'center'}}>
+                                <span className="material-symbols-outlined" style={{fontSize: '80px', opacity: 0.3}}>camera_enhance</span>
+                                <div style={{marginTop: '10px', fontSize: '1.2rem'}}>System Idle</div>
                             </div>
                         )}
                     </div>
-                    
-                    <div style={{marginTop: '20px', padding: '15px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d', fontSize: '0.85rem', color: '#92400e'}}>
-                        <strong>Note:</strong> Ensure good lighting for best results. This system checks detecting faces against the registered student database for outstanding dues.
-                    </div>
+                </div>
+
+                {/* Info Panel */}
+                <div style={{flex: 1}}>
+                    {mode === 'registration' ? (
+                        <div style={styles.card}>
+                            <h3 style={{marginTop: 0, marginBottom: '20px', color: '#1e293b'}}>Step 2: Biometric Enrollment</h3>
+                            
+                            <div style={{marginBottom: '20px'}}>
+                                <label style={styles.label}>Identify Student</label>
+                                <SearchableSelect options={studentOptions} value={regStudentId} onChange={setRegStudentId} placeholder="Search Student..." />
+                            </div>
+
+                            <div style={{background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '25px', border: '1px solid #e2e8f0', textAlign: 'center'}}>
+                                <div style={{width: '50px', height: '50px', background: '#4f46e5', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto'}}>
+                                    <span className="material-symbols-outlined" style={{fontSize: '30px'}}>{REG_STEPS[regStep].icon}</span>
+                                </div>
+                                <div style={{fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', marginBottom: '4px'}}>{REG_STEPS[regStep].label}</div>
+                                <div style={{fontSize: '0.85rem', color: '#64748b'}}>{REG_STEPS[regStep].desc}</div>
+                                
+                                <div style={{display: 'flex', gap: '6px', marginTop: '20px', justifyContent: 'center'}}>
+                                    {capturedAngles.map((done, i) => (
+                                        <div key={i} style={{width: '25px', height: '6px', background: done ? '#10b981' : '#e2e8f0', borderRadius: '3px'}}></div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleCaptureAngle}
+                                disabled={!isScanning || !regStudentId || isCapturing}
+                                style={{...styles.button("primary"), width: '100%', padding: '15px', marginBottom: '12px', fontSize: '1rem'}}
+                            >
+                                {isCapturing ? "Processing Geometry..." : "Record Current Angle"}
+                            </button>
+                            
+                            {capturedAngles.every(v => v === true) && (
+                                <button onClick={handleSaveEnrollment} style={{...styles.button("primary"), width: '100%', background: '#10b981', padding: '15px'}}>
+                                    Complete Profile Save
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{...styles.card, textAlign: 'center', border: status === 'danger' ? '3px solid #ef4444' : status === 'success' ? '3px solid #22c55e' : '1px solid #e2e8f0', minHeight: '380px', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+                            {detectedStudent ? (
+                                <>
+                                    <div style={{width: '140px', height: '140px', borderRadius: '50%', margin: '0 auto 20px auto', border: `4px solid ${status === 'danger' ? '#ef4444' : '#22c55e'}`, overflow: 'hidden', padding: '4px', background: 'white'}}>
+                                        {detectedStudent.photo ? <img src={detectedStudent.photo} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} /> : <span className="material-symbols-outlined" style={{fontSize: '80px', color: '#cbd5e1', lineHeight: '132px'}}>person</span>}
+                                    </div>
+                                    <h3 style={{margin: '0 0 5px 0', color: '#0f172a', fontSize: '1.4rem'}}>{detectedStudent.name}</h3>
+                                    <div style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 600}}>{detectedStudent.admissionNo}</div>
+                                    <div style={{marginTop: '25px', padding: '15px', background: status === 'danger' ? '#fee2e2' : '#dcfce7', borderRadius: '12px'}}>
+                                        <div style={{fontSize: '0.8rem', fontWeight: 800, color: status === 'danger' ? '#b91c1c' : '#166534', textTransform: 'uppercase'}}>Payment Status</div>
+                                        <div style={{fontSize: '1.8rem', fontWeight: 900, color: status === 'danger' ? '#b91c1c' : '#166534'}}>
+                                            {detectedStudent.balance > 0 ? `Rs ${detectedStudent.balance.toLocaleString()}` : "CLEARED"}
+                                        </div>
+                                    </div>
+                                    {status === 'danger' && <div style={{color: '#b91c1c', fontWeight: 800, marginTop: '12px', fontSize: '1.1rem'}}>⛔ ACCESS BLOCKED</div>}
+                                    {status === 'success' && <div style={{color: '#166534', fontWeight: 800, marginTop: '12px', fontSize: '1.1rem'}}>✅ ACCESS GRANTED</div>}
+                                </>
+                            ) : (
+                                <div style={{padding: '40px 0', color: '#94a3b8'}}>
+                                    <div style={{animation: 'pulse 2s infinite', display: 'inline-block', marginBottom: '15px'}}>
+                                        <span className="material-symbols-outlined" style={{fontSize: '64px'}}>biometric_setup</span>
+                                    </div>
+                                    <p style={{fontSize: '1.1rem', fontWeight: 500}}>Scan Ready...</p>
+                                    <p style={{fontSize: '0.8rem', marginTop: '5px'}}>Walk up to the camera to identify</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
-            
             <style>{`
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.95); } }
             `}</style>
         </div>
     );

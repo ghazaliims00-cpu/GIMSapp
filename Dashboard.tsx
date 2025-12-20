@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { styles } from "./styles";
-import { Transaction, Account, Student, Campus } from "./types";
+import { Transaction, Account, Student, Campus, MONTHS } from "./types";
 
 export const Dashboard = ({ transactions, accounts, students, masterData, currentUser }: { transactions: Transaction[], accounts: Account[], students: Student[], masterData: any, currentUser: string }) => {
   const [showDailyReport, setShowDailyReport] = useState(false);
@@ -27,7 +26,6 @@ export const Dashboard = ({ transactions, accounts, students, masterData, curren
     .reduce((acc, t) => acc + t.amount, 0);
 
   const totalReceivable = students.reduce((acc, s) => acc + (s.balance > 0 ? s.balance : 0), 0);
-  const defaultersCount = students.filter(s => s.balance > 0).length;
 
   const campusStats = masterData.campuses.map((campus: Campus) => {
     const campusStudents = students.filter(s => s.campus === campus.name);
@@ -40,48 +38,58 @@ export const Dashboard = ({ transactions, accounts, students, masterData, curren
     return { campus: campus.name, students: campusStudents.length, collected, receivable };
   });
 
-  const recentTransactions = [...postedTxns]
-    .filter(t => t.type !== 'FEE_DUE' && t.debitAccount !== '1-01-004') // Exclude liability creation
-    .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
-    .slice(0, 5);
-  
+  // --- Graph Logic: Yearly Recovery ---
+  const currentYear = new Date().getFullYear();
+  const graphData = MONTHS.map((m, idx) => {
+      const monthNum = (idx + 1).toString().padStart(2, '0');
+      const total = postedTxns
+          .filter(t => t.date.startsWith(`${currentYear}-${monthNum}`) && (t.type === 'FEE' || t.type === 'FEE_RCV'))
+          .reduce((sum, t) => sum + t.amount, 0);
+      return { month: m.substring(0, 3), amount: total };
+  });
+
+  const maxAmount = Math.max(...graphData.map(d => d.amount), 100000); 
+
   // Daily Report Dynamic Logic
   const today = new Date().toISOString().slice(0, 10);
   const todayTxns = postedTxns.filter(t => t.date === today);
-
   const getAccountName = (code: string) => accounts.find(a => a.code === code)?.name || code;
 
-  // Aggregate Income: Check Credit Account where Debit is Liquid (Cash/Bank)
   const incomeAgg: Record<string, number> = {};
-  // Aggregate Expense: Check Debit Account where Credit is Liquid (Cash/Bank)
   const expenseAgg: Record<string, number> = {};
 
   todayTxns.forEach(t => {
       const isDrLiquid = t.debitAccount === "1-01-001" || (t.debitAccount.startsWith("1-01") && t.debitAccount !== "1-01-004");
       const isCrLiquid = t.creditAccount === "1-01-001" || (t.creditAccount.startsWith("1-01") && t.creditAccount !== "1-01-004");
-
-      // Income (Receipt)
       if (isDrLiquid) {
           let headName = getAccountName(t.creditAccount);
-          // If Fee, use details if available
           if (t.details) {
-              const dKeys = Object.keys(t.details).filter(k => t.details[k] > 0 && k !== 'hospitalName' && k !== 'fineType');
+              const dKeys = Object.keys(t.details).filter(k => t.details[k] > 0 && k !== 'hospitalName' && k !== 'fineType' && k !== 'dueDate' && k !== 'months');
               if(dKeys.length > 0) headName = dKeys.map(k => k.charAt(0).toUpperCase() + k.slice(1)).join(", ");
           }
-          if(!incomeAgg[headName]) incomeAgg[headName] = 0;
-          incomeAgg[headName] += t.amount;
+          incomeAgg[headName] = (incomeAgg[headName] || 0) + t.amount;
       }
-
-      // Expense (Payment)
       if (isCrLiquid) {
           const headName = getAccountName(t.debitAccount);
-          if(!expenseAgg[headName]) expenseAgg[headName] = 0;
-          expenseAgg[headName] += t.amount;
+          expenseAgg[headName] = (expenseAgg[headName] || 0) + t.amount;
       }
   });
 
   const totalReceiptsToday = Object.values(incomeAgg).reduce((a,b) => a+b, 0);
   const totalPaymentsToday = Object.values(expenseAgg).reduce((a,b) => a+b, 0);
+
+  const handleExportPDF = () => {
+    const element = document.getElementById('daily-report-content');
+    if (!element) return;
+    const opt = {
+      margin: 10,
+      filename: `GIMS_Daily_Report_${today}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    (window as any).html2pdf().from(element).set(opt).save();
+  };
 
   return (
     <div>
@@ -125,7 +133,6 @@ export const Dashboard = ({ transactions, accounts, students, masterData, curren
            <div>
              <div style={{fontSize: '0.8rem', color: '#000', fontWeight: 600}}>Cash in Hand</div>
              <div style={{fontSize: '2rem', fontWeight: 700, color: '#000'}}>Rs {cashInHand.toLocaleString()}</div>
-             <div style={{fontSize: '0.7rem', color: '#000', marginTop: '4px'}}>Click to view Cash Book ?</div>
            </div>
            <div style={{alignSelf: 'flex-end', padding: '8px', background: '#d1fae5', borderRadius: '8px', color: '#10b981'}}>
              <span className="material-symbols-outlined">account_balance_wallet</span>
@@ -145,62 +152,85 @@ export const Dashboard = ({ transactions, accounts, students, masterData, curren
 
       {showDailyReport && (
          <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, width: '800px'}}>
-               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center'}}>
-                  <div>
-                      <h3 style={{margin: 0}}>Daily Receipt & Payment Report</h3>
-                      <div style={{color: '#64748b', fontSize: '0.9rem'}}>Date: <span style={{fontWeight: 700, color: '#0f172a'}}>{today}</span></div>
-                  </div>
+            <div style={{...styles.modalContent, width: '850px', padding: '0', overflow: 'hidden'}}>
+               <div className="no-print" style={{padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc'}}>
+                  <h3 style={{margin: 0}}>Daily Financial Report</h3>
                   <div style={{display: 'flex', gap: '10px'}}>
-                     <button style={styles.button("secondary")} onClick={() => window.print()}>Print</button>
+                     <button style={{...styles.button("primary"), background: '#1e293b'}} onClick={handleExportPDF}>
+                        <span className="material-symbols-outlined">picture_as_pdf</span> Export PDF
+                     </button>
+                     <button style={styles.button("secondary")} onClick={() => window.print()}>
+                        <span className="material-symbols-outlined">print</span> Print
+                     </button>
                      <button style={{border: 'none', background: 'transparent', cursor: 'pointer'}} onClick={() => setShowDailyReport(false)}><span className="material-symbols-outlined">close</span></button>
                   </div>
                </div>
                
-               <div style={{padding: '20px', background: '#f8fafc', borderRadius: '8px'}}>
-                  <h4 style={{borderBottom: '2px solid #166534', paddingBottom: '10px', color: '#166534'}}>Income (Receipts)</h4>
-                  <table style={styles.table}>
-                     <tbody>
-                        {Object.keys(incomeAgg).length === 0 ? (
-                            <tr><td style={{color: '#94a3b8', fontStyle: 'italic'}}>No receipts today</td></tr>
-                        ) : (
-                            Object.entries(incomeAgg).map(([head, amount]) => (
-                                <tr key={head}>
-                                    <td>{head}</td>
-                                    <td style={{textAlign: 'right'}}>Rs {amount.toLocaleString()}</td>
-                                </tr>
-                            ))
-                        )}
-                        <tr style={{borderTop: '1px solid #cbd5e1'}}>
-                            <td><strong>Total Receipts Today</strong></td>
-                            <td style={{textAlign: 'right'}}><strong>Rs {totalReceiptsToday.toLocaleString()}</strong></td>
-                        </tr>
-                     </tbody>
-                  </table>
-                  
-                  <h4 style={{borderBottom: '2px solid #b91c1c', paddingBottom: '10px', marginTop: '20px', color: '#b91c1c'}}>Expenses (Payments)</h4>
-                  <table style={styles.table}>
-                     <tbody>
-                        {Object.keys(expenseAgg).length === 0 ? (
-                            <tr><td style={{color: '#94a3b8', fontStyle: 'italic'}}>No payments today</td></tr>
-                        ) : (
-                            Object.entries(expenseAgg).map(([head, amount]) => (
-                                <tr key={head}>
-                                    <td>{head}</td>
-                                    <td style={{textAlign: 'right'}}>Rs {amount.toLocaleString()}</td>
-                                </tr>
-                            ))
-                        )}
-                        <tr style={{borderTop: '1px solid #cbd5e1'}}>
-                            <td><strong>Total Payments Today</strong></td>
-                            <td style={{textAlign: 'right'}}><strong>Rs {totalPaymentsToday.toLocaleString()}</strong></td>
-                        </tr>
-                     </tbody>
-                  </table>
+               <div id="daily-report-content" style={{padding: '40px', backgroundColor: 'white'}}>
+                  <div style={{textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #0f172a', paddingBottom: '20px'}}>
+                      <h2 style={{margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '2px'}}>Ghazali Institute of Medical Sciences</h2>
+                      <div style={{fontSize: '1.2rem', fontWeight: 600, color: '#475569'}}>Daily Receipt & Payment Summary</div>
+                      <div style={{marginTop: '10px', fontSize: '0.9rem'}}>Date: <span style={{fontWeight: 700, color: '#0f172a'}}>{today}</span></div>
+                  </div>
 
-                  <div style={{marginTop: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 700}}>
-                     <span>Net Cash Balance</span>
-                     <span>Rs {cashInHand.toLocaleString()}</span>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px'}}>
+                     {/* Income Section */}
+                     <div>
+                        <h4 style={{borderBottom: '2px solid #166534', paddingBottom: '10px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                           <span className="material-symbols-outlined">arrow_downward</span> Income (Receipts)
+                        </h4>
+                        <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                           <tbody>
+                              {Object.entries(incomeAgg).map(([head, amount]) => (
+                                  <tr key={head} style={{borderBottom: '1px solid #f1f5f9'}}>
+                                      <td style={{padding: '12px 0', color: '#334155'}}>{head}</td>
+                                      <td style={{textAlign: 'right', padding: '12px 0', fontWeight: 600}}>Rs {amount.toLocaleString()}</td>
+                                  </tr>
+                              ))}
+                              <tr style={{background: '#f0fdf4'}}>
+                                  <td style={{padding: '12px 10px', fontWeight: 700}}>Total Receipts</td>
+                                  <td style={{textAlign: 'right', padding: '12px 10px', fontWeight: 700, color: '#166534'}}>Rs {totalReceiptsToday.toLocaleString()}</td>
+                              </tr>
+                           </tbody>
+                        </table>
+                     </div>
+
+                     {/* Expense Section */}
+                     <div>
+                        <h4 style={{borderBottom: '2px solid #b91c1c', paddingBottom: '10px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                           <span className="material-symbols-outlined">arrow_upward</span> Expenses (Payments)
+                        </h4>
+                        <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                           <tbody>
+                              {Object.entries(expenseAgg).map(([head, amount]) => (
+                                  <tr key={head} style={{borderBottom: '1px solid #f1f5f9'}}>
+                                      <td style={{padding: '12px 0', color: '#334155'}}>{head}</td>
+                                      <td style={{textAlign: 'right', padding: '12px 0', fontWeight: 600}}>Rs {amount.toLocaleString()}</td>
+                                  </tr>
+                              ))}
+                              <tr style={{background: '#fef2f2'}}>
+                                  <td style={{padding: '12px 10px', fontWeight: 700}}>Total Payments</td>
+                                  <td style={{textAlign: 'right', padding: '12px 10px', fontWeight: 700, color: '#b91c1c'}}>Rs {totalPaymentsToday.toLocaleString()}</td>
+                              </tr>
+                           </tbody>
+                        </table>
+                     </div>
+                  </div>
+
+                  <div style={{marginTop: '40px', padding: '25px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                     <div>
+                        <div style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Net Day Cash Position</div>
+                        <div style={{fontSize: '1.8rem', fontWeight: 800, color: '#0f172a'}}>Rs {(totalReceiptsToday - totalPaymentsToday).toLocaleString()}</div>
+                     </div>
+                     <div style={{textAlign: 'right'}}>
+                        <div style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Closing Cash Balance</div>
+                        <div style={{fontSize: '1.8rem', fontWeight: 800, color: '#1d4ed8'}}>Rs {cashInHand.toLocaleString()}</div>
+                     </div>
+                  </div>
+
+                  <div style={{marginTop: '60px', display: 'flex', justifyContent: 'space-between'}}>
+                      <div style={{textAlign: 'center', width: '200px'}}><div style={{borderBottom: '1px solid #cbd5e1', marginBottom: '5px'}}></div><div style={{fontSize: '0.8rem'}}>Cashier Signature</div></div>
+                      <div style={{textAlign: 'center', width: '200px'}}><div style={{borderBottom: '1px solid #cbd5e1', marginBottom: '5px'}}></div><div style={{fontSize: '0.8rem'}}>Finance Manager</div></div>
                   </div>
                </div>
             </div>
@@ -232,28 +262,59 @@ export const Dashboard = ({ transactions, accounts, students, masterData, curren
         </div>
       </div>
 
-      <div style={{marginTop: '10px', ...styles.card}}>
-         <h3 style={{margin: '0 0 20px 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
-           <span className="material-symbols-outlined" style={{color: '#059669'}}>receipt_long</span> Recent Transactions
-         </h3>
-         <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-            {recentTransactions.map(t => (
-              <div key={t.id} style={{padding: '12px', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                 <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
-                    <div style={{padding: '8px', background: '#e2e8f0', borderRadius: '6px', color: '#475569'}}>
-                       <span className="material-symbols-outlined" style={{fontSize: '20px'}}>payments</span>
-                    </div>
-                    <div>
-                       <div style={{fontWeight: 600, color: '#0f172a'}}>{t.description}</div>
-                       <div style={{fontSize: '0.75rem', color: '#64748b'}}>{t.date} • {t.voucherNo || t.id}</div>
-                    </div>
-                 </div>
-                 <div style={{textAlign: 'right'}}>
-                    <div style={{fontWeight: 700, color: '#059669'}}>Rs {t.amount.toLocaleString()}</div>
-                    <div style={{fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'white', border: '1px solid #e2e8f0', display: 'inline-block', marginTop: '4px'}}>{t.type}</div>
-                 </div>
-              </div>
-            ))}
+      {/* NEW: Yearly Recovery Trend Graph */}
+      <div style={{marginTop: '10px', ...styles.card, padding: '30px'}}>
+         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px'}}>
+            <h3 style={{margin: '0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b'}}>
+                <span className="material-symbols-outlined" style={{color: '#4f46e5'}}>analytics</span> 
+                Annual Recovery Trend ({currentYear})
+            </h3>
+            <div style={{display: 'flex', gap: '15px', fontSize: '0.8rem', fontWeight: 600}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}><div style={{width: '12px', height: '12px', borderRadius: '3px', background: 'linear-gradient(to top, #4f46e5, #10b981)'}}></div> Fee Collection</div>
+            </div>
+         </div>
+
+         <div style={{height: '350px', position: 'relative', width: '100%', display: 'flex', alignItems: 'flex-end', paddingBottom: '30px', paddingLeft: '50px', boxSizing: 'border-box'}}>
+            {/* Y-Axis Labels */}
+            <div style={{position: 'absolute', left: 0, top: 0, bottom: '30px', width: '45px', display: 'flex', flexDirection: 'column-reverse', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8', textAlign: 'right', paddingRight: '10px'}}>
+                <span>0</span>
+                <span>{(maxAmount * 0.25).toLocaleString()}</span>
+                <span>{(maxAmount * 0.5).toLocaleString()}</span>
+                <span>{(maxAmount * 0.75).toLocaleString()}</span>
+                <span>{maxAmount.toLocaleString()}</span>
+            </div>
+
+            {/* Grid Lines */}
+            <div style={{position: 'absolute', left: '50px', right: 0, top: 0, bottom: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', zIndex: 0}}>
+                {[0, 1, 2, 3, 4].map(i => <div key={i} style={{width: '100%', height: '1px', background: '#f1f5f9'}}></div>)}
+            </div>
+
+            {/* Bars */}
+            <div style={{display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', width: '100%', height: '100%', zIndex: 1}}>
+                {graphData.map((d, i) => {
+                    const heightPct = (d.amount / maxAmount) * 100;
+                    return (
+                        <div key={i} style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative'}}>
+                            <div 
+                                title={`${d.month}: Rs ${d.amount.toLocaleString()}`}
+                                style={{
+                                    width: '40%', 
+                                    height: `${heightPct}%`, 
+                                    background: 'linear-gradient(to top, #4f46e5, #10b981)',
+                                    borderRadius: '6px 6px 0 0',
+                                    transition: 'all 0.3s ease',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                    minHeight: d.amount > 0 ? '4px' : '0'
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                                onMouseOut={(e) => (e.currentTarget.style.filter = 'none')}
+                            ></div>
+                            <div style={{position: 'absolute', bottom: '-25px', fontSize: '0.75rem', fontWeight: 600, color: '#64748b'}}>{d.month}</div>
+                        </div>
+                    )
+                })}
+            </div>
          </div>
       </div>
     </div>

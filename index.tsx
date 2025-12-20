@@ -29,6 +29,41 @@ import { InventoryModule } from "./InventoryModule";
 import { FaceRecognitionScanner } from "./FaceRecognitionScanner";
 import { PromotionModule } from "./PromotionModule";
 import { Login } from "./Login";
+import { SMSModule } from "./SMSModule";
+
+// --- Trial & Expiry Component ---
+const TrialLockScreen = ({ daysLeft }: { daysLeft: number }) => (
+  <div style={{
+    height: '100vh', width: '100vw', background: '#0f172a', display: 'flex', 
+    justifyContent: 'center', alignItems: 'center', fontFamily: "'Inter', sans-serif"
+  }}>
+    <div style={{
+      background: 'white', padding: '50px', borderRadius: '24px', textAlign: 'center',
+      maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+    }}>
+      <div style={{
+        width: '80px', height: '80px', background: '#fee2e2', color: '#ef4444',
+        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 20px auto'
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '48px' }}>lock</span>
+      </div>
+      <h1 style={{ color: '#0f172a', margin: '0 0 10px 0' }}>Trial Period Expired</h1>
+      <p style={{ color: '#64748b', fontSize: '1.1rem', lineHeight: '1.6' }}>
+        Aap ka trial period khatam ho chuka hai. 
+        Software ko mazeed istemal karne ke liye administrator se raabta karein aur full version purchase karein.
+      </p>
+      <div style={{ 
+        marginTop: '30px', padding: '20px', background: '#f8fafc', 
+        borderRadius: '12px', border: '1px solid #e2e8f0' 
+      }}>
+        <div style={{ fontWeight: 700, color: '#334155', marginBottom: '5px' }}>Contact for Activation:</div>
+        <div style={{ color: '#4f46e5', fontSize: '1.2rem', fontWeight: 600 }}>+92 3XX XXXXXXX</div>
+        <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '10px' }}>System ID: {localStorage.getItem('gims_sys_id')}</div>
+      </div>
+    </div>
+  </div>
+);
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,6 +76,9 @@ const App = () => {
 
   const [userRole, setUserRole] = useState("Admin");
   const [roles, setRoles] = useState(INITIAL_ROLES);
+
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const [remainingDays, setRemainingDays] = useState(7);
   
   const [masterData, setMasterData] = useState({
      campuses: INITIAL_CAMPUSES,
@@ -64,24 +102,62 @@ const App = () => {
   const [studentAttendance, setStudentAttendance] = useState<StudentAttendance[]>([]);
   const [employeeAttendance, setEmployeeAttendance] = useState<EmployeeAttendance[]>([]);
 
-  // Access Control
   const [permissions, setPermissions] = useState<any>({
-     "Admin": { dashboard: true, cashbook: true, reports: true, vouchers: true, fees: true, bulk: true, ledger: true, students: true, promotion: true, accounts: true, approvals: true, master: true, access: true, import: true, history: true, financial: true, hr: true, budget: true, inventory: true, scanner: true, settings: true },
-     "Finance Manager": { dashboard: true, cashbook: true, reports: true, vouchers: true, fees: true, bulk: true, ledger: true, students: true, promotion: true, accounts: true, approvals: true, master: true, access: false, import: true, history: true, financial: true, hr: true, budget: true, inventory: true, scanner: true, settings: true },
-     "Accountant": { dashboard: true, cashbook: true, reports: true, vouchers: true, fees: true, bulk: false, ledger: true, students: false, promotion: false, accounts: false, approvals: false, master: false, access: false, import: false, history: false, financial: false, hr: false, budget: false, inventory: true, scanner: false, settings: true },
-     "Cashier": { dashboard: false, cashbook: false, reports: false, vouchers: false, fees: true, bulk: false, ledger: false, students: false, promotion: false, accounts: false, approvals: false, master: false, access: false, import: false, history: false, financial: false, hr: false, budget: false, inventory: false, scanner: false, settings: true }
+     "Admin": { dashboard: true, cashbook: true, reports: true, vouchers: true, fees: true, bulk: true, ledger: true, students: true, promotion: true, accounts: true, approvals: true, master: true, access: true, import: true, history: true, financial: true, hr: true, budget: true, inventory: true, scanner: true, sms: true, settings: true },
+     "Finance Manager": { dashboard: true, cashbook: true, reports: true, vouchers: true, fees: true, bulk: true, ledger: true, students: true, promotion: true, accounts: true, approvals: true, master: true, access: false, import: true, history: true, financial: true, hr: true, budget: true, inventory: true, scanner: true, sms: true, settings: true },
+     "Accountant": { dashboard: true, cashbook: true, reports: true, vouchers: true, fees: true, bulk: false, ledger: true, students: false, promotion: false, accounts: false, approvals: false, master: false, access: false, import: false, history: false, financial: false, hr: false, budget: false, inventory: true, scanner: false, sms: false, settings: true },
+     "Cashier": { dashboard: false, cashbook: false, reports: false, vouchers: false, fees: true, bulk: false, ledger: false, students: false, promotion: false, accounts: false, approvals: false, master: false, access: false, import: false, history: false, financial: false, hr: false, budget: false, inventory: false, scanner: false, sms: false, settings: true }
   });
 
-  // --- PERSISTENCE LOGIC ---
+  // --- Real SMS Integration Function ---
+  // Connect this function to your Gateway API (e.g. Veersms.com, SMS Alert etc)
+  const sendRealSMS = async (number: string, message: string) => {
+      console.log(`[SMS-LOG] To: ${number}, Msg: ${message}`);
+      
+      // SAMPLE API CALL (Uncomment and set your URL when you buy a gateway)
+      /*
+      try {
+          const apiURL = `https://your-gateway-url.com/send?apikey=YOUR_KEY&to=${number}&message=${encodeURIComponent(message)}`;
+          await fetch(apiURL);
+          console.log("SMS Triggered Successfully");
+      } catch (err) {
+          console.error("SMS Failed", err);
+      }
+      */
+  };
+
   useEffect(() => {
-    // Load data from LocalStorage on mount
+    const sysIdKey = 'gims_sys_id';
+    if (!localStorage.getItem(sysIdKey)) {
+      localStorage.setItem(sysIdKey, Date.now().toString());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const userObj = users.find(u => u.username === currentUser);
+      if (userRole === "Admin" || (userObj && userObj.isTrialUser === false)) {
+        setIsTrialExpired(false);
+        setRemainingDays(999);
+        return;
+      }
+      const TRIAL_PERIOD_DAYS = 7;
+      const startTime = parseInt(localStorage.getItem('gims_sys_id') || Date.now().toString());
+      const currentTime = Date.now();
+      const diffMs = currentTime - startTime;
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDays > TRIAL_PERIOD_DAYS) setIsTrialExpired(true);
+      else setRemainingDays(Math.ceil(TRIAL_PERIOD_DAYS - diffDays));
+    }
+  }, [isAuthenticated, currentUser, userRole, users]);
+
+  useEffect(() => {
     const load = (key: string, setter: Function) => {
         const saved = localStorage.getItem(`gims_${key}`);
         if(saved) {
             try { setter(JSON.parse(saved)); } catch(e) { console.error("Error loading "+key, e); }
         }
     };
-
     load("masterData", setMasterData);
     load("students", setStudents);
     load("transactions", setTransactions);
@@ -98,7 +174,6 @@ const App = () => {
     load("employeeAttendance", setEmployeeAttendance);
   }, []);
 
-  // Sync to local storage on every change
   useEffect(() => { localStorage.setItem("gims_masterData", JSON.stringify(masterData)); }, [masterData]);
   useEffect(() => { localStorage.setItem("gims_students", JSON.stringify(students)); }, [students]);
   useEffect(() => { localStorage.setItem("gims_transactions", JSON.stringify(transactions)); }, [transactions]);
@@ -116,7 +191,6 @@ const App = () => {
 
   const handlePostTransaction = (t: Transaction) => {
     let finalStatus: "Posted" | "Pending" = "Posted";
-    
     if (userRole === "Cashier" || userRole === "Accountant") {
        finalStatus = "Pending";
        alert("Transaction sent for approval");
@@ -129,11 +203,17 @@ const App = () => {
           setStudents(prev => prev.map(s => s.admissionNo === t.studentId ? { ...s, balance: s.balance + t.amount } : s));
        } 
        else if ((t.type === 'FEE_RCV' || t.type === 'FEE') && t.studentId) {
-          setStudents(prev => prev.map(s => s.admissionNo === t.studentId ? { ...s, balance: s.balance - t.amount } : s));
+          setStudents(prev => {
+              const updated = prev.map(s => s.admissionNo === t.studentId ? { ...s, balance: s.balance - t.amount } : s);
+              const target = updated.find(s => s.admissionNo === t.studentId);
+              if (target && target.smsNumber) {
+                  sendRealSMS(target.smsNumber, `Dear ${target.name}, Rs. ${t.amount} deposit successfully. New Balance: Rs. ${target.balance}. GIMS.`);
+              }
+              return updated;
+          });
        }
     }
-    
-    setTransactions(prev => [...prev, { ...t, status: finalStatus, recordedBy: userRole }]);
+    setTransactions(prev => [...prev, { ...t, status: finalStatus, recordedBy: currentUser || userRole }]);
   };
 
   const handleUpdateTransaction = (oldTxn: Transaction, newTxn: Transaction) => {
@@ -169,7 +249,14 @@ const App = () => {
         if(updated.type === 'FEE_DUE' && updated.studentId) {
             setStudents(prev => prev.map(s => s.admissionNo === updated.studentId ? { ...s, balance: s.balance + updated.amount } : s));
         } else if ((updated.type === 'FEE_RCV' || updated.type === 'FEE') && updated.studentId) {
-            setStudents(prev => prev.map(s => s.admissionNo === updated.studentId ? { ...s, balance: s.balance - updated.amount } : s));
+            setStudents(prev => {
+                const newList = prev.map(s => s.admissionNo === updated.studentId ? { ...s, balance: s.balance - updated.amount } : s);
+                const s = newList.find(st => st.admissionNo === updated.studentId);
+                if (s && s.smsNumber) {
+                    sendRealSMS(s.smsNumber, `Transaction Approved: Rs. ${updated.amount} received. New Balance: Rs. ${s.balance}. Regards GIMS Admin.`);
+                }
+                return newList;
+            });
         }
      }
   };
@@ -208,9 +295,9 @@ const App = () => {
 
   const handleLogout = () => {
       setIsAuthenticated(false); setCurrentUser(""); setActiveTab("dashboard");
+      setIsTrialExpired(false);
   };
 
-  // Settings Component
   const SettingsComponent = () => {
       const [currentPass, setCurrentPass] = useState("");
       const [newPass, setNewPass] = useState("");
@@ -249,15 +336,15 @@ const App = () => {
 
   const renderContent = () => {
     switch(activeTab) {
-      case "dashboard": return <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={userRole} />;
-      case "students": return <StudentBiodata students={students} onAddStudent={(s: Student) => setStudents([...students, s])} onDeleteStudent={(id: string) => setStudents(students.filter(s => s.admissionNo !== id))} onUpdateStudent={(s: Student) => setStudents(students.map(st => st.admissionNo === s.admissionNo ? s : st))} masterData={masterData} currentUser={userRole} />;
+      case "dashboard": return <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={currentUser || userRole} />;
+      case "students": return <StudentBiodata students={students} onAddStudent={(s: Student) => setStudents([...students, s])} onDeleteStudent={(id: string) => setStudents(students.filter(s => s.admissionNo !== id))} onUpdateStudent={(s: Student) => setStudents(students.map(st => st.admissionNo === s.admissionNo ? s : st))} masterData={masterData} currentUser={currentUser || userRole} />;
       case "promotion": return <PromotionModule students={students} onUpdateStudents={setStudents} masterData={masterData} />;
       case "cashbook": return <CashBook transactions={transactions} students={students} accounts={accounts} masterData={masterData} userRole={userRole} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} />;
       case "vouchers": return <VoucherSystem onPostTransaction={handlePostTransaction} accounts={accounts} transactions={transactions} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} masterData={masterData} userRole={userRole} />;
       case "fees": return <FeeCollection students={students} onCollectFee={handlePostTransaction} masterData={masterData} accounts={accounts} currentUser={currentUser} />;
       case "ledger": return <StudentLedger students={students} transactions={transactions} masterData={masterData} />;
       case "bulk": return <FeeGenerationModule students={students} onGenerate={(txns: Transaction[]) => { txns.forEach(t => handlePostTransaction(t)); }} masterData={masterData} transactions={transactions} />;
-      case "reports": return <ReportsModule students={students} transactions={transactions} masterData={masterData} subTab={reportSubTab} currentUser={userRole} studentAttendance={studentAttendance} setStudentAttendance={setStudentAttendance} />;
+      case "reports": return <ReportsModule students={students} transactions={transactions} masterData={masterData} subTab={reportSubTab} currentUser={currentUser || userRole} studentAttendance={studentAttendance} setStudentAttendance={setStudentAttendance} />;
       case "financial": return <FinancialStatements transactions={transactions} accounts={accounts} students={students} masterData={masterData} subTab={finSubTab} />;
       case "accounts": return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} />;
       case "approvals": return <Approvals transactions={transactions} onApprove={handleApprove} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} />;
@@ -267,16 +354,29 @@ const App = () => {
       case "history": return <HistoryModule logs={auditLogs} />;
       case "hr": return <HRModule employees={employees} onAddEmployee={(e: Employee) => setEmployees([...employees, e])} onUpdateEmployee={(e: Employee) => setEmployees(employees.map(emp => emp.id === e.id ? e : emp))} onDeleteEmployee={(id: string) => setEmployees(employees.filter(e => e.id !== id))} masterData={masterData} onPostPayroll={handlePostTransaction} onUpdateMasterData={updateMasterData} employeeAttendance={employeeAttendance} setEmployeeAttendance={setEmployeeAttendance} subTab={hrSubTab} />;
       case "budget": return <BudgetModule budgets={budgets} setBudgets={setBudgets} masterData={masterData} transactions={transactions} students={students} />;
-      case "inventory": return <InventoryModule inventory={inventory} setInventory={setInventory} issuances={issuances} setIssuances={setIssuances} employees={employees} masterData={masterData} currentUser={userRole} onUpdateMasterData={updateMasterData} />;
+      case "inventory": return <InventoryModule inventory={inventory} setInventory={setInventory} issuances={issuances} setIssuances={setIssuances} employees={employees} masterData={masterData} currentUser={currentUser || userRole} onUpdateMasterData={updateMasterData} />;
       case "scanner": return <FaceRecognitionScanner students={students} userRole={userRole} />;
+      case "sms": return <SMSModule students={students} masterData={masterData} />;
       case "settings": return <SettingsComponent />;
-      default: return <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={userRole} />;
+      default: return <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={currentUser || userRole} />;
     }
   };
 
   const checkPerm = (mod: string) => {
      return permissions[userRole]?.[mod];
   };
+
+  if (isTrialExpired) {
+    return (
+       <div style={{position:'relative'}}>
+          <TrialLockScreen daysLeft={0} />
+          <button 
+             onClick={handleLogout} 
+             style={{position:'absolute', top: '20px', right: '20px', ...styles.button("secondary")}}
+          >Logout</button>
+       </div>
+    );
+  }
 
   if (!isAuthenticated) {
       return <Login onLogin={handleLogin} users={users} />;
@@ -307,6 +407,7 @@ const App = () => {
           {checkPerm("students") && <div style={styles.navItem(activeTab === "students")} onClick={() => { setActiveTab("students"); setExpandedMenu(null); }}><span className="material-symbols-outlined">school</span> Student Biodata</div>}
           {checkPerm("promotion") && <div style={styles.navItem(activeTab === "promotion")} onClick={() => { setActiveTab("promotion"); setExpandedMenu(null); }}><span className="material-symbols-outlined">upgrade</span> Promotion</div>}
           {checkPerm("scanner") && <div style={styles.navItem(activeTab === "scanner")} onClick={() => { setActiveTab("scanner"); setExpandedMenu(null); }}><span className="material-symbols-outlined">face</span> Security Scanner</div>}
+          {checkPerm("sms") && <div style={styles.navItem(activeTab === "sms")} onClick={() => { setActiveTab("sms"); setExpandedMenu(null); }}><span className="material-symbols-outlined">sms</span> SMS Center</div>}
           {checkPerm("fees") && <div style={styles.navItem(activeTab === "fees")} onClick={() => { setActiveTab("fees"); setExpandedMenu(null); }}><span className="material-symbols-outlined">payments</span> Fee Collection</div>}
           {checkPerm("ledger") && <div style={styles.navItem(activeTab === "ledger")} onClick={() => { setActiveTab("ledger"); setExpandedMenu(null); }}><span className="material-symbols-outlined">history_edu</span> Student Ledger</div>}
           {checkPerm("bulk") && <div style={styles.navItem(activeTab === "bulk")} onClick={() => { setActiveTab("bulk"); setExpandedMenu(null); }}><span className="material-symbols-outlined">playlist_add_check</span> Fee Generation</div>}

@@ -4,7 +4,6 @@ export const FINE_TYPES = ["Exam Fee", "Late Coming", "Absent"];
 export const FEE_HEADS_FILTER = ["Admission Fee", "Tuition Fee", "Arrear Fee", "Exam Fee", "Hospital Fee", "Registration Fee", "Diploma Fee", "Affiliation Fee", "Fine Fee", "Grace Mark Fee", "UFM Fee", "ID Card Fee"];
 export const FEE_HEADS_DROPDOWN = ["Tuition Fee", "Admission Fee", "Registration Fee", "Exam Fee", "Fine", "Other"];
 
-// Unified Clean List of All Programs
 export const INITIAL_PROGRAMS = [
     "BS Nursing", "BS Radiology", "BS Anesthesia", "BS Health", "BS Pathology", "BS Dental",
     "DPT", "Pharmacy-B", "LHV", "CNA",
@@ -118,6 +117,7 @@ export type Student = {
   balance: number;
   address: string;
   phone: string;
+  smsNumber: string; // Mandatory for notifications
   cnic?: string; 
   board: string;
   district?: string; 
@@ -223,6 +223,8 @@ export type User = {
   username: string;
   role: string;
   password?: string;
+  email?: string;
+  isTrialUser?: boolean;
 };
 
 export type InventoryItem = {
@@ -287,10 +289,10 @@ export const INITIAL_ACCOUNTS: Account[] = [
 ];
 
 export const INITIAL_STUDENTS_DATA: Student[] = [
-  { admissionNo: "KMU-24-001", name: "Ali Khan", fatherName: "Rehman Khan", cnic: "17301-1234567-1", program: "BS Nursing", semester: "3rd", campus: "Main Campus", balance: 15000, address: "University Road, Peshawar", district: "Peshawar", phone: "0300-1234567", board: "PNC", remarks: "Regular", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-01", dob: "2002-05-15", recordedBy: "Admin" },
-  { admissionNo: "KMU-24-002", name: "Ayesha Bibi", fatherName: "Gul Zaman", cnic: "17301-7654321-2", program: "DPT", semester: "1st", campus: "Girl Campus", balance: 0, address: "Sheikh Maltoon Town, Mardan", district: "Mardan", phone: "0312-9876543", board: "KMU", remarks: "", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Female", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-05", dob: "2003-02-20", recordedBy: "Admin" },
-  { admissionNo: "PNC-24-001", name: "Sana Gul", fatherName: "Gul Khan", cnic: "17301-9999999-3", program: "BS Nursing", semester: "1st", campus: "Girl Campus", balance: 0, address: "Jungle Khel, Kohat", district: "Kohat", phone: "0332-1231231", board: "PNC", remarks: "Scholarship", tuitionFee: 150000, admissionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 600000, gender: "Female", nationality: "Pakistani", status: "Free", admissionDate: "2024-03-01", dob: "2004-01-01", recordedBy: "Manager" },
-  { admissionNo: "KPK-24-001", name: "Rashid Minhas", fatherName: "Minhas Khan", cnic: "17301-8888888-4", program: "Diploma Anesthesia", semester: "1st", campus: "Main Campus", balance: 10000, address: "Timergara, Lower Dir", district: "Lower Dir", phone: "0302-3453456", board: "KPK Medical Faculty", remarks: "", tuitionFee: 48000, admissionFee: 33000, miscCharges: 0, affiliationFee: 0, totalCourseFee: 225000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-04-01", dob: "2003-04-04", recordedBy: "Admin" },
+  { admissionNo: "KMU-24-001", name: "Ali Khan", fatherName: "Rehman Khan", cnic: "17301-1234567-1", program: "BS Nursing", semester: "3rd", campus: "Main Campus", balance: 15000, address: "University Road, Peshawar", district: "Peshawar", phone: "0300-1234567", smsNumber: "03001234567", board: "PNC", remarks: "Regular", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-01", dob: "2002-05-15", recordedBy: "Admin" },
+  { admissionNo: "KMU-24-002", name: "Ayesha Bibi", fatherName: "Gul Zaman", cnic: "17301-7654321-2", program: "DPT", semester: "1st", campus: "Girl Campus", balance: 0, address: "Sheikh Maltoon Town, Mardan", district: "Mardan", phone: "0312-9876543", smsNumber: "03129876543", board: "KMU", remarks: "", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Female", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-05", dob: "2003-02-20", recordedBy: "Admin" },
+  { admissionNo: "PNC-24-001", name: "Sana Gul", fatherName: "Gul Khan", cnic: "17301-9999999-3", program: "BS Nursing", semester: "1st", campus: "Girl Campus", balance: 0, address: "Jungle Khel, Kohat", district: "Kohat", phone: "0332-1231231", smsNumber: "03321231231", board: "PNC", remarks: "Scholarship", tuitionFee: 150000, admissionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 600000, gender: "Female", nationality: "Pakistani", status: "Free", admissionDate: "2024-03-01", dob: "2004-01-01", recordedBy: "Manager" },
+  { admissionNo: "KPK-24-001", name: "Rashid Minhas", fatherName: "Minhas Khan", cnic: "17301-8888888-4", program: "Diploma Anesthesia", semester: "1st", campus: "Main Campus", balance: 10000, address: "Timergara, Lower Dir", district: "Lower Dir", phone: "0302-3453456", smsNumber: "03023453456", board: "KPK Medical Faculty", remarks: "", tuitionFee: 48000, admissionFee: 33000, miscCharges: 0, affiliationFee: 0, totalCourseFee: 225000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-04-01", dob: "2003-04-04", recordedBy: "Admin" },
 ];
 
 export const INITIAL_EMPLOYEES_DATA: Employee[] = [
@@ -300,10 +302,10 @@ export const INITIAL_EMPLOYEES_DATA: Employee[] = [
 ];
 
 export const INITIAL_USERS: User[] = [
-   { username: "admin", role: "Admin", password: "123" },
-   { username: "manager", role: "Finance Manager", password: "123" },
-   { username: "accountant", role: "Accountant", password: "123" },
-   { username: "cashier", role: "Cashier", password: "123" }
+   { username: "admin", role: "Admin", password: "123", email: "admin@gims.edu.pk", isTrialUser: false },
+   { username: "manager", role: "Finance Manager", password: "123", email: "manager@gims.edu.pk", isTrialUser: true },
+   { username: "accountant", role: "Accountant", password: "123", email: "acc@gims.edu.pk", isTrialUser: true },
+   { username: "cashier", role: "Cashier", password: "123", email: "cashier@gims.edu.pk", isTrialUser: true }
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [];

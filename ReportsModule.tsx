@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { styles } from "./styles";
 import { Transaction, Student, HOSPITALS, Campus, INITIAL_TEACHERS, StudentAttendance } from "./types";
@@ -42,7 +41,7 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
 
    const [showBlankSheet, setShowBlankSheet] = useState(false);
 
-   // --- Fix: Added missing student attendance helper functions and filtered list ---
+   // --- Missing student attendance helper functions and filtered list ---
    const handleAttSearchSelect = (id: string) => {
        if(attSelectedIds.includes(id)) {
            setAttSelectedIds(attSelectedIds.filter(sid => sid !== id));
@@ -106,7 +105,6 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
        (sem === "All" || s.semester === sem) &&
        (camp === "All" || s.campus === camp)
    );
-   // --- End Fix ---
 
    const formatDateDisplay = (dateString: string) => {
        if(!dateString) return "";
@@ -188,23 +186,23 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
       filteredList.sort((a:Student,b:Student) => b.balance - a.balance);
       const totalDefaulterAmount = filteredList.reduce((acc:number, s:Student) => acc + s.balance, 0);
 
+      // Campus Wise Stats for Defaulters
+      const campusSummary = masterData.campuses.map((c: Campus, idx: number) => {
+          const cDefaulters = allDefaulters.filter((s: Student) => s.campus === c.name);
+          const cBalance = cDefaulters.reduce((acc: number, s: Student) => acc + s.balance, 0);
+          const colors = ["#4f46e5", "#ef4444", "#8b5cf6", "#f59e0b"];
+          const bgs = ["#eef2ff", "#fef2f2", "#f5f3ff", "#fffbeb"];
+          return {
+              name: c.name,
+              count: cDefaulters.length,
+              balance: cBalance,
+              color: colors[idx % colors.length],
+              bg: bgs[idx % bgs.length]
+          };
+      });
+
       const totalPages = Math.ceil(filteredList.length / itemsPerPage);
       const paginatedList = filteredList.slice((pageDefaulters - 1) * itemsPerPage, pageDefaulters * itemsPerPage);
-
-      const boardStats: any = {};
-      filteredList.forEach((s:Student) => {
-          if(!boardStats[s.board]) boardStats[s.board] = { count: 0, amount: 0 };
-          boardStats[s.board].count++;
-          boardStats[s.board].amount += s.balance;
-      });
-      const programStats: any = {};
-      if(selectedBoard) {
-          filteredList.filter((s:Student) => s.board === selectedBoard).forEach((s:Student) => {
-               if(!programStats[s.program]) programStats[s.program] = { count: 0, amount: 0 };
-               programStats[s.program].count++;
-               programStats[s.program].amount += s.balance;
-          });
-      }
 
       content = (
          <div id="printable-area">
@@ -230,28 +228,61 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                   </select>
                </FilterItem>
                <div style={{marginLeft: 'auto', textAlign: 'right'}}>
-                  <div style={{fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px'}}>Total Outstanding</div>
+                  <div style={{fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px'}}>Overall Outstanding</div>
                   <div style={{fontWeight: 800, fontSize: '1.4rem', color: '#b91c1c'}}>Rs {totalDefaulterAmount.toLocaleString()}</div>
                </div>
             </FilterBar>
 
-            <table style={styles.table}><thead><tr style={{background: '#fff1f2'}}><th style={styles.th}>S.No</th><th style={styles.th}>Name</th><th style={styles.th}>Father</th><th style={styles.th}>Program</th><th style={styles.th}>Board</th><th style={styles.th}>Phone</th><th style={{...styles.th, textAlign: 'right'}}>Outstanding</th></tr></thead>
-            <tbody>
-                {paginatedList.map((s: Student, i: number) => (
-                    <tr key={s.admissionNo}>
-                        <td style={styles.td}>{(pageDefaulters - 1) * itemsPerPage + i + 1}</td>
-                        <td style={styles.td}>{s.name}</td>
-                        <td style={styles.td}>{s.fatherName}</td>
-                        <td style={styles.td}>{s.program} ({s.semester})</td>
-                        <td style={styles.td}>{s.board}</td>
-                        <td style={styles.td}>{s.phone}</td>
-                        <td style={{...styles.td, textAlign: 'right', color: s.balance > 0 ? '#b91c1c' : '#166534'}}>{s.balance.toLocaleString()}</td>
-                    </tr>
-                ))}
-                {paginatedList.length === 0 && <tr><td colSpan={7} style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>No defaulters found</td></tr>}
-            </tbody>
-            </table>
-            <PaginationControls current={pageDefaulters} total={totalPages} onPageChange={setPageDefaulters} />
+            {/* Campus Summary Boxes */}
+            <div className="no-print" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px'}}>
+               {campusSummary.map((stat: any) => (
+                  <div key={stat.name} style={{
+                     ...styles.kpiCard(stat.color, stat.bg),
+                     borderLeft: `5px solid ${stat.color}`,
+                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                     minHeight: '100px',
+                     padding: '16px 20px'
+                  }}>
+                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                        <div>
+                           <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px'}}>{stat.name}</div>
+                           <div style={{fontSize: '1.35rem', fontWeight: 800, color: '#1e293b'}}>Rs {stat.balance.toLocaleString()}</div>
+                        </div>
+                        <div style={{padding: '8px', background: 'white', borderRadius: '10px', color: stat.color, border: `1px solid ${stat.color}20`}}>
+                           <span className="material-symbols-outlined">domain</span>
+                        </div>
+                     </div>
+                     <div style={{marginTop: '10px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', color: '#475569'}}>
+                        <span className="material-symbols-outlined" style={{fontSize: '16px'}}>groups</span>
+                        <strong>{stat.count}</strong> Defaulters
+                     </div>
+                  </div>
+               ))}
+            </div>
+
+            <div style={styles.card}>
+               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+                  <h3 style={{margin: 0, color: '#0f172a'}}>Detailed List</h3>
+                  <div style={{fontSize: '0.85rem', color: '#64748b'}}>Found {filteredList.length} records for current filters</div>
+               </div>
+               <table style={styles.table}><thead><tr style={{background: '#fff1f2'}}><th style={styles.th}>S.No</th><th style={styles.th}>Name</th><th style={styles.th}>Father</th><th style={styles.th}>Program</th><th style={styles.th}>Board</th><th style={styles.th}>Phone</th><th style={{...styles.th, textAlign: 'right'}}>Outstanding</th></tr></thead>
+               <tbody>
+                   {paginatedList.map((s: Student, i: number) => (
+                       <tr key={s.admissionNo}>
+                           <td style={styles.td}>{(pageDefaulters - 1) * itemsPerPage + i + 1}</td>
+                           <td style={styles.td}>{s.name}</td>
+                           <td style={styles.td}>{s.fatherName}</td>
+                           <td style={styles.td}>{s.program} ({s.semester})</td>
+                           <td style={styles.td}>{s.board}</td>
+                           <td style={styles.td}>{s.phone}</td>
+                           <td style={{...styles.td, textAlign: 'right', color: s.balance > 0 ? '#b91c1c' : '#166534'}}>{s.balance.toLocaleString()}</td>
+                       </tr>
+                   ))}
+                   {paginatedList.length === 0 && <tr><td colSpan={7} style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>No defaulters found</td></tr>}
+               </tbody>
+               </table>
+               <PaginationControls current={pageDefaulters} total={totalPages} onPageChange={setPageDefaulters} />
+            </div>
          </div>
       );
    } else if (activeTab === "students_list") {
@@ -310,6 +341,7 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                           <th style={styles.th}>Admission No</th>
                           <th style={styles.th}>Student Name</th>
                           <th style={styles.th}>Father Name</th>
+                          <th style={styles.th}>Phone #</th>
                           <th style={styles.th}>Program</th>
                           <th style={styles.th}>Status</th>
                           <th style={styles.th}>Remarks</th>
@@ -322,6 +354,7 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                               <td style={styles.td}>{s.admissionNo}</td>
                               <td style={{...styles.td, fontWeight: 600}}>{s.name}</td>
                               <td style={styles.td}>{s.fatherName}</td>
+                              <td style={styles.td}>{s.phone || '-'}</td>
                               <td style={styles.td}>{s.program} ({s.semester})</td>
                               <td style={styles.td}>{s.status}</td>
                               <td style={styles.td}>{s.remarks}</td>
@@ -580,10 +613,6 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
        );
    }
 
-   const handleExport = (type: string) => {
-      alert(`Exporting ${activeTab} to ${type}... (Feature mocked)`);
-   };
-
    return (
       <div>
          <h2 className="no-print" style={{marginBottom: '5px'}}>Reports: <span style={{color: '#64748b', fontSize: '1.2rem', fontWeight: 400}}>{activeTab.replace('_', ' ').toUpperCase()}</span></h2>
@@ -598,8 +627,6 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
             </div>
 
             <div style={{marginLeft: 'auto', display: 'flex', gap: '10px'}}>
-               <button style={{...styles.button("secondary"), padding: '8px 12px'}} onClick={() => handleExport('PDF')}><span className="material-symbols-outlined" style={{fontSize: '18px'}}>picture_as_pdf</span> PDF</button>
-               <button style={{...styles.button("secondary"), padding: '8px 12px'}} onClick={() => handleExport('Excel')}><span className="material-symbols-outlined" style={{fontSize: '18px'}}>table_view</span> Excel</button>
                <button style={{...styles.button("secondary"), padding: '8px 12px'}} onClick={() => window.print()}><span className="material-symbols-outlined" style={{fontSize: '18px'}}>print</span> Print</button>
             </div>
          </div>

@@ -17,7 +17,7 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
 
   const [formData, setFormData] = useState<Student>({
      admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", 
-     balance: 0, address: "", district: "Peshawar", phone: "", cnic: "", board: "", remarks: "", photo: "",
+     balance: 0, address: "", district: "Peshawar", phone: "", smsNumber: "", cnic: "", board: "", remarks: "", photo: "",
      admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0,
      dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10),
      recordedBy: ""
@@ -222,7 +222,7 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
 
   const validateForm = () => {
       const newErrors: any = {};
-      const requiredFields = ['admissionNo', 'name', 'fatherName', 'program', 'semester', 'campus', 'board', 'phone', 'cnic', 'district', 'address', 'dob', 'gender', 'nationality', 'status'];
+      const requiredFields = ['admissionNo', 'name', 'fatherName', 'program', 'semester', 'campus', 'board', 'phone', 'smsNumber', 'cnic', 'district', 'address', 'dob', 'gender', 'nationality', 'status'];
       let isValid = true;
       requiredFields.forEach(field => {
           if(!(formData as any)[field]) {
@@ -386,7 +386,7 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                     <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Father Name" value={searchFather} onChange={e => setSearchFather(e.target.value)} /></div>
                     <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Adm No" value={searchAdm} onChange={e => setSearchAdm(e.target.value)} /></div>
                     <button style={styles.button("primary")} onClick={() => { 
-                        setFormData({ admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", balance: 0, address: "", district: "Peshawar", phone: "", cnic: "", board: "", remarks: "", photo: "", admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0, dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10), recordedBy: currentUser || "Admin" });
+                        setFormData({ admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", balance: 0, address: "", district: "Peshawar", phone: "", smsNumber: "", cnic: "", board: "", remarks: "", photo: "", admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0, dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10), recordedBy: currentUser || "Admin" });
                         setEditMode(false); setErrors({}); setView("form"); 
                     }}>+ Add New Student</button>
                 </div>
@@ -472,6 +472,10 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                     <div>
                         <label style={styles.label}>Phone No *</label>
                         <input style={getInputStyle('phone')} value={formData.phone} onChange={e => {setFormData({...formData, phone: formatPhone(e.target.value)}); setErrors({...errors, phone: false});}} placeholder="03XX-XXXXXXX" />
+                    </div>
+                    <div>
+                        <label style={styles.label}>SMS Number *</label>
+                        <input style={getInputStyle('smsNumber')} value={formData.smsNumber} onChange={e => {setFormData({...formData, smsNumber: formatPhone(e.target.value)}); setErrors({...errors, smsNumber: false});}} placeholder="923XXXXXXXXX" />
                     </div>
                     <div>
                         <label style={styles.label}>CNIC *</label>
